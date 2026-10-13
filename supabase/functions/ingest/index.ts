@@ -37,14 +37,23 @@ interface IngestEvent {
   received_at: string;
 }
 
-function validateEvent(ev: IngestEvent): string | null {
-  if (!VALID_TYPES.includes(ev.type)) return `invalid type: ${ev.type}`;
-  if (ev.vest_id < 1 || ev.vest_id > 8) return `vest_id out of range: ${ev.vest_id}`;
-  if (![0, 1, 2].includes(ev.helm)) return `invalid helm: ${ev.helm}`;
-  if (ev.bat_mv < 2500 || ev.bat_mv > 4500) return `bat_mv out of range: ${ev.bat_mv}`;
-  if (ev.lat !== null && (ev.lat < -90 || ev.lat > 90)) return `lat out of range`;
-  if (ev.lon !== null && (ev.lon < -180 || ev.lon > 180)) return `lon out of range`;
-  if (ev.rssi < -140 || ev.rssi > 0) return `rssi out of range: ${ev.rssi}`;
+const isInt = (v: unknown, lo: number, hi: number) =>
+  typeof v === 'number' && Number.isInteger(v) && v >= lo && v <= hi;
+const isNum = (v: unknown, lo: number, hi: number) =>
+  typeof v === 'number' && Number.isFinite(v) && v >= lo && v <= hi;
+
+function validateEvent(ev: unknown): string | null {
+  if (!ev || typeof ev !== 'object') return 'event is not an object';
+  const e = ev as Record<string, unknown>;
+  if (typeof e.type !== 'string' || !VALID_TYPES.includes(e.type)) return `invalid type: ${e.type}`;
+  if (!isInt(e.vest_id, 1, 8)) return `vest_id out of range: ${e.vest_id}`;
+  if (!isInt(e.seq, 0, 65535)) return `seq out of range: ${e.seq}`;
+  if (!isInt(e.helm, 0, 2)) return `invalid helm: ${e.helm}`;
+  if (!isInt(e.bat_mv, 2500, 4500)) return `bat_mv out of range: ${e.bat_mv}`;
+  if (e.lat !== null && !isNum(e.lat, -90, 90)) return 'lat out of range';
+  if (e.lon !== null && !isNum(e.lon, -180, 180)) return 'lon out of range';
+  if (!isInt(e.rssi, -140, 0)) return `rssi out of range: ${e.rssi}`;
+  if (typeof e.received_at !== 'string' || isNaN(Date.parse(e.received_at))) return 'invalid received_at';
   return null;
 }
 
@@ -89,7 +98,7 @@ Deno.serve(async (req) => {
     return json({ error: 'invalid JSON' }, 422);
   }
 
-  if (!body.gateway_id || !Array.isArray(body.events) || body.events.length === 0) {
+  if (!body || typeof body.gateway_id !== 'string' || !body.gateway_id || !Array.isArray(body.events) || body.events.length === 0) {
     return json({ error: 'missing gateway_id or events' }, 422);
   }
   if (body.events.length > 100) {
@@ -99,22 +108,18 @@ Deno.serve(async (req) => {
   const settings = await getSettings();
   let accepted = 0;
   let duplicates = 0;
+
+  // Validasi dulu (indeks asli dipertahankan), lalu proses yang valid urut terlama.
   const rejected: { index: number; reason: string }[] = [];
+  const valid: { ev: IngestEvent; index: number }[] = [];
+  body.events.forEach((raw, index) => {
+    const err = validateEvent(raw);
+    if (err) rejected.push({ index, reason: err });
+    else valid.push({ ev: raw, index });
+  });
+  valid.sort((x, y) => Date.parse(x.ev.received_at) - Date.parse(y.ev.received_at));
 
-  // Process events in order (oldest first)
-  const events = [...body.events].sort((a, b) =>
-    new Date(a.received_at).getTime() - new Date(b.received_at).getTime()
-  );
-
-  for (let i = 0; i < events.length; i++) {
-    const ev = events[i];
-    const originalIndex = body.events.indexOf(ev);
-    const err = validateEvent(ev);
-    if (err) {
-      rejected.push({ index: originalIndex, reason: err });
-      continue;
-    }
-
+  for (const { ev, index: originalIndex } of valid) {
     // Insert event (idempotent via unique constraint)
     const { data: inserted, error } = await supabase.from('events').insert({
       gateway_id: body.gateway_id,
@@ -156,7 +161,7 @@ Deno.serve(async (req) => {
         .select('id')
         .eq('vest_id', ev.vest_id)
         .is('resolved_at', null)
-        .single();
+        .maybeSingle();
 
       if (openIncident) {
         // Update existing incident
@@ -183,7 +188,7 @@ Deno.serve(async (req) => {
         .select('id, last_event_at')
         .eq('vest_id', ev.vest_id)
         .is('resolved_at', null)
-        .single();
+        .maybeSingle();
 
       if (openIncident) {
         // Count clean heartbeats since last danger event
@@ -210,7 +215,7 @@ Deno.serve(async (req) => {
       .select('id')
       .eq('vest_id', ev.vest_id)
       .is('resolved_at', null)
-      .single();
+      .maybeSingle();
 
     const hasOpenDanger = !!openInc;
     let stage: string;
@@ -232,6 +237,11 @@ Deno.serve(async (req) => {
     else if (ev.bat_mv < settings.battery_low_mv) statusText = 'Baterai rendah';
     else if (ev.helm !== 1) statusText = ev.helm === 0 ? 'Helm jauh' : 'Helm tidak terdengar';
     else if (ev.lat === null) statusText = 'Posisi belum tersedia';
+
+    // Event lama (backlog SD) tidak boleh menimpa state yang lebih baru.
+    const { data: cur } = await supabase.from('vest_state')
+      .select('last_seen_at').eq('vest_id', ev.vest_id).maybeSingle();
+    if (cur?.last_seen_at && Date.parse(cur.last_seen_at) > Date.parse(ev.received_at)) continue;
 
     await supabase.from('vest_state').upsert({
       vest_id: ev.vest_id,
