@@ -20,10 +20,10 @@ export default function VestCard({ vest, selected, onClick, now, lowBatMv }: Pro
   const bars = rssiBars(s?.rssi ?? null);
 
   return (
-    <button
-      onClick={() => { onClick(); navigate(`/vest/${vest.id}`); }}
-      className={`w-full text-left rounded-xl border p-3 transition-all ${
-        selected ? 'ring-1 ring-safe/30' : ''
+    <div
+      onClick={onClick}
+      className={`group relative w-full cursor-pointer text-left rounded-xl border p-3 transition-all ${
+        selected ? 'ring-2 ring-safe/40 shadow-lg shadow-safe/10' : 'hover:border-white/20'
       }`}
       style={{
         borderColor: meta.border,
@@ -92,12 +92,19 @@ export default function VestCard({ vest, selected, onClick, now, lowBatMv }: Pro
         </div>
       )}
 
-      {/* Last seen */}
-      {s?.last_seen_at && (
-        <p className="mt-1.5 font-mono text-[9px] text-white/30">
-          {vest.incident ? '⚠ ' : ''}terakhir {ago(s.last_seen_at, now)}
-        </p>
-      )}
-    </button>
+      {/* Footer */}
+      <div className="mt-2 flex items-center justify-between font-mono text-[9px] text-white/40">
+        <span>{s?.last_seen_at ? `${vest.incident ? '⚠ ' : ''}terakhir ${ago(s.last_seen_at, now)}` : '—'}</span>
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            navigate(`/vest/${vest.id}`);
+          }}
+          className="text-safe/80 hover:text-safe hover:underline font-sans text-[10px]"
+        >
+          Detail ›
+        </button>
+      </div>
+    </div>
   );
 }

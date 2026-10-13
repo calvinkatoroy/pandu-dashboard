@@ -26,7 +26,6 @@ export default function DetailPage({ simMode }: Props) {
 
   useEffect(() => {
     if (simMode) {
-      // Generate fake chart data
       const now = Date.now();
       const data = Array.from({ length: 48 }, (_, i) => {
         const t = new Date(now - (47 - i) * 30 * 60_000);
@@ -37,7 +36,33 @@ export default function DetailPage({ simMode }: Props) {
         };
       });
       setChartData(data);
-      setEvents([]);
+
+      // Generate realistic recent simulated events for this vest
+      const mockEvs: VestEvent[] = Array.from({ length: 20 }, (_, i) => {
+        const t = new Date(now - i * 30_000).toISOString();
+        let evType: VestEvent['type'] = 'HB';
+        if (i === 0 && vest?.incident) {
+          evType = vest.incident.kind;
+        } else if (i === 5 && Math.random() > 0.5) {
+          evType = 'HB';
+        }
+        return {
+          id: 5000 + i,
+          gateway_id: 'GW1',
+          vest_id: vestId,
+          seq: 400 - i,
+          type: evType,
+          lat: vest?.state?.lat ?? -6.1033 + (Math.random() - 0.5) * 0.002,
+          lon: vest?.state?.lon ?? 106.8817 + (Math.random() - 0.5) * 0.002,
+          pos_age_s: i === 0 ? 3 : (i * 30),
+          bat_mv: (vest?.state?.bat_mv ?? 3850) - (i * 2),
+          helm: vest?.state?.helm ?? 1,
+          rssi: (vest?.state?.rssi ?? -80) + Math.floor((Math.random() - 0.5) * 6),
+          snr: (vest?.state?.snr ?? 6.5) + Number(((Math.random() - 0.5) * 2).toFixed(1)),
+          received_at: t,
+        };
+      });
+      setEvents(mockEvs);
       return;
     }
 
@@ -114,7 +139,7 @@ export default function DetailPage({ simMode }: Props) {
       <div className="grid grid-cols-2 gap-px bg-white/5 sm:grid-cols-4">
         <Tile label="Baterai" value={`${bat}%`} sub={`${s?.bat_mv ?? '—'} mV`}>
           <div className="mt-1.5 h-1.5 overflow-hidden rounded bg-white/10">
-            <div className="h-full rounded" style={{ width: `${bat}%`, background: batColor(s?.bat_mv, lowMv) }} />
+            <div className="h-full rounded" style={{ width: `${bat}%`, background: batColor(s?.bat_mv ?? null, lowMv) }} />
           </div>
         </Tile>
         <Tile label="Helm" value={helmLabel(s?.helm ?? null)} sub={vest?.helmet_label ?? '—'} />

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
 import type { Incident } from '../lib/types';
 import { wibDate, ago, toCSV, downloadCSV } from '../lib/format';
+import { simIncidentHistory } from '../hooks/useVestData';
 
 interface Props {
   simMode: boolean;
@@ -34,7 +35,10 @@ export default function IncidentPage({ simMode }: Props) {
           vest_name: 'Vest 04',
         },
       ];
-      setIncidents(mock);
+      const live = simIncidentHistory.map(i => ({ ...i, vest_name: `Vest ${String(i.vest_id).padStart(2, '0')}` }));
+      const all = [...live, ...mock].filter(i =>
+        filter === 'all' ? true : filter === 'open' ? !i.resolved_at : !!i.resolved_at);
+      setIncidents(all);
       setLoading(false);
       return;
     }
@@ -44,10 +48,10 @@ export default function IncidentPage({ simMode }: Props) {
     if (filter === 'resolved') q = q.not('resolved_at', 'is', null);
 
     q.then(({ data }) => {
-      const mapped = (data ?? []).map((i: Record<string, unknown>) => ({
-        ...(i as Incident),
-        vest_name: (i.vests as { name: string } | null)?.name,
-      }));
+      const mapped = (data ?? []).map(row => {
+        const i = row as unknown as Incident & { vests: { name: string } | null };
+        return { ...i, vest_name: i.vests?.name };
+      });
       setIncidents(mapped);
       setLoading(false);
     });

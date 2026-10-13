@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useAuth } from '../hooks/useAuth';
 
-export default function Login() {
+export default function Login({ onUseSim }: { onUseSim?: () => void }) {
   const { signIn, signUp } = useAuth();
   const [mode, setMode] = useState<'signin' | 'signup'>('signin');
   const [email, setEmail] = useState('');
@@ -88,9 +88,15 @@ export default function Login() {
           </form>
         </div>
 
-        <p className="mt-4 text-center text-xs text-white/30">
-          Mode simulator aktif — login opsional untuk demo
-        </p>
+        {onUseSim && (
+          <button
+            id="use-sim-btn"
+            onClick={onUseSim}
+            className="mt-4 w-full text-center text-xs text-white/40 underline-offset-2 hover:text-white/70 hover:underline"
+          >
+            Kembali ke mode simulator (tanpa login)
+          </button>
+        )}
       </div>
     </div>
   );

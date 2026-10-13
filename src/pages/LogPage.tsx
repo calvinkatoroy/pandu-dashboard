@@ -20,10 +20,14 @@ export default function LogPage({ simMode }: Props) {
   const [vests, setVests] = useState<{ id: number; name: string }[]>([]);
 
   useEffect(() => {
+    if (simMode) {
+      setVests(Array.from({ length: 8 }, (_, i) => ({ id: i + 1, name: `Vest ${String(i + 1).padStart(2, '0')}` })));
+      return;
+    }
     supabase.from('vests').select('id, name').order('id').then(({ data }) => {
       setVests((data ?? []) as { id: number; name: string }[]);
     });
-  }, []);
+  }, [simMode]);
 
   useEffect(() => {
     if (simMode) {

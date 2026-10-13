@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" rx="128" fill="#0a1c2b"/>
+  <!-- Safety beacon ring -->
+  <circle cx="256" cy="256" r="180" fill="none" stroke="#1fa37a" stroke-width="16" opacity="0.3"/>
+  <circle cx="256" cy="256" r="140" fill="none" stroke="#1fa37a" stroke-width="12" opacity="0.5"/>
+  <!-- Maritime lighthouse/shield anchor glyph -->
+  <path d="M256 120 L340 280 L290 280 L290 380 L222 380 L222 280 L172 280 Z" fill="#1fa37a"/>
+  <circle cx="256" cy="180" r="28" fill="#f4f1ea"/>
+</svg>

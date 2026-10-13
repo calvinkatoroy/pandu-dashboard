@@ -1,44 +1,66 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
-const ALARM_SOUND = 'https://actions.google.com/sounds/v1/alarms/emergency_alarm.ogg';
-
-export function useAlarmAudio(hasDanger: boolean) {
+/**
+ * Alarm suara untuk Danger (PLAN §9):
+ * - Web Audio (tanpa file eksternal), bunyi berulang tiap `repeatS` detik sampai di-mute.
+ * - Mute per insiden: insiden baru akan berbunyi lagi walau insiden lama sudah di-mute.
+ * - Peramban butuh interaksi pengguna dulu, jadi ada `enableSound()`.
+ */
+export function useAlarmAudio(openIncidentIds: number[], repeatS = 5) {
   const [enabled, setEnabled] = useState(false);
-  const [muted, setMuted] = useState(false);
-  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const [mutedIds, setMutedIds] = useState<Set<number>>(new Set());
+  const ctxRef = useRef<AudioContext | null>(null);
 
-  useEffect(() => {
-    const a = new Audio(ALARM_SOUND);
-    a.loop = true;
-    a.volume = 0.7;
-    audioRef.current = a;
-    return () => { a.pause(); a.src = ''; };
+  const ringing = enabled && openIncidentIds.some(id => !mutedIds.has(id));
+
+  const beep = useCallback(() => {
+    const ctx = ctxRef.current;
+    if (!ctx) return;
+    const t0 = ctx.currentTime;
+    // Dua nada naik-turun, 3 kali (pola sirene pendek)
+    for (let i = 0; i < 3; i++) {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'square';
+      const start = t0 + i * 0.5;
+      osc.frequency.setValueAtTime(880, start);
+      osc.frequency.setValueAtTime(660, start + 0.25);
+      gain.gain.setValueAtTime(0.0001, start);
+      gain.gain.exponentialRampToValueAtTime(0.18, start + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.0001, start + 0.48);
+      osc.connect(gain).connect(ctx.destination);
+      osc.start(start);
+      osc.stop(start + 0.5);
+    }
   }, []);
 
   useEffect(() => {
-    const a = audioRef.current;
-    if (!a) return;
-    if (hasDanger && enabled && !muted) {
-      a.play().catch(() => {});
-    } else {
-      a.pause();
-      a.currentTime = 0;
-    }
-  }, [hasDanger, enabled, muted]);
+    if (!ringing) return;
+    beep();
+    const t = setInterval(beep, Math.max(2, repeatS) * 1000);
+    return () => clearInterval(t);
+  }, [ringing, repeatS, beep]);
+
+  // Bersihkan id yang sudah tidak terbuka
+  useEffect(() => {
+    setMutedIds(prev => {
+      const next = new Set([...prev].filter(id => openIncidentIds.includes(id)));
+      return next.size === prev.size ? prev : next;
+    });
+  }, [openIncidentIds.join(',')]); // eslint-disable-line react-hooks/exhaustive-deps
 
   function enableSound() {
-    setEnabled(true);
-    setMuted(false);
-    // Play a short test to satisfy autoplay policy
-    if (audioRef.current) {
-      audioRef.current.play().then(() => {
-        if (!hasDanger) setTimeout(() => audioRef.current?.pause(), 200);
-      }).catch(() => {});
+    if (!ctxRef.current) {
+      const AC = window.AudioContext ?? (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+      ctxRef.current = new AC();
     }
+    ctxRef.current.resume();
+    setEnabled(true);
   }
 
-  function mute() { setMuted(true); }
-  function unmute() { setMuted(false); }
+  const mute = (id: number) => setMutedIds(prev => new Set(prev).add(id));
+  const muteAll = () => setMutedIds(new Set(openIncidentIds));
+  const isMuted = (id: number) => mutedIds.has(id);
 
-  return { enabled, muted, enableSound, mute, unmute };
+  return { enabled, ringing, enableSound, mute, muteAll, isMuted, testBeep: beep };
 }

@@ -1,16 +1,30 @@
 import { useState } from 'react';
 import { SCENARIOS, buildSimulatedPayload, type Scenario } from '../lib/simulator';
 
-const SUPABASE_URL = 'https://mgnlxkzmiqfxssbwuzpu.supabase.co';
+import { SUPABASE_URL } from '../lib/supabase';
+
 const INGEST_URL = `${SUPABASE_URL}/functions/v1/ingest`;
 
-export default function SimulatorPanel() {
+interface Props {
+  simMode: boolean;
+  vestCount: number;
+  onApplyLocal: (scenario: Scenario, vestId: number) => void;
+  fleet?: 1 | 8;
+  onFleetChange?: (f: 1 | 8) => void;
+}
+
+export default function SimulatorPanel({ simMode, vestCount, onApplyLocal, fleet, onFleetChange }: Props) {
   const [open, setOpen] = useState(false);
   const [vestId, setVestId] = useState(1);
   const [busy, setBusy] = useState(false);
   const [lastResult, setLastResult] = useState<string | null>(null);
 
   async function send(scenario: Scenario) {
+    if (simMode) {
+      onApplyLocal(scenario, vestId);
+      setLastResult(`✓ skenario "${scenario}" diterapkan ke Vest ${vestId} (lokal)`);
+      return;
+    }
     setBusy(true);
     setLastResult(null);
     const payload = buildSimulatedPayload(scenario, vestId);
@@ -53,7 +67,23 @@ export default function SimulatorPanel() {
       </button>
 
       {open && (
-        <div className="border-t border-white/5 p-3">
+        <div className="w-56 border-t border-white/5 p-3">
+          <p className="mb-2 text-[10px] text-white/40">
+            {simMode ? 'Mode Sim: data lokal di browser.' : 'Mode Live: kirim ke Edge Function ingest.'}
+          </p>
+          {simMode && onFleetChange && (
+            <div className="mb-2 flex gap-1">
+              {([1, 8] as const).map(f => (
+                <button
+                  key={f}
+                  onClick={() => { onFleetChange(f); setVestId(1); }}
+                  className={`flex-1 rounded-lg px-2 py-1 text-[11px] ${fleet === f ? 'bg-safe/20 text-safe' : 'bg-ink-700 text-white/50'}`}
+                >
+                  {f} Vest
+                </button>
+              ))}
+            </div>
+          )}
           {/* Vest selector */}
           <div className="mb-2">
             <label className="text-[10px] uppercase tracking-wider text-white/30">Vest</label>
@@ -62,7 +92,7 @@ export default function SimulatorPanel() {
               onChange={e => setVestId(Number(e.target.value))}
               className="mt-0.5 w-full rounded-lg border border-white/10 bg-ink-900 px-2 py-1.5 text-xs text-white"
             >
-              {Array.from({ length: 8 }, (_, i) => (
+              {Array.from({ length: Math.max(1, vestCount) }, (_, i) => (
                 <option key={i} value={i + 1}>Vest {String(i + 1).padStart(2, '0')}</option>
               ))}
             </select>

@@ -10,9 +10,10 @@ function mkEvent(
   vest_id: number,
   seq: number,
   type: EventType,
-  opts: Partial<{ helm: HelmetState; bat: number; lat: number; lon: number; rssi: number; snr: number }> = {}
+  opts: Partial<{ helm: HelmetState; bat: number; lat: number | null; lon: number | null; rssi: number; snr: number }> = {}
 ) {
-  const hasPos = type !== 'OFF' && (opts.lat !== undefined || Math.random() > 0.05);
+  const forcedNoFix = opts.lat === null || opts.lon === null;
+  const hasPos = type !== 'OFF' && !forcedNoFix && (opts.lat !== undefined || Math.random() > 0.05);
   return {
     vest_id,
     seq,

@@ -1,25 +1,21 @@
-import type { Incident } from '../lib/types';
 import type { VestWithData } from '../hooks/useVestData';
-import { wib, ago } from '../lib/format';
-import { supabase } from '../lib/supabase';
-import { useAuth } from '../hooks/useAuth';
+import { wib } from '../lib/format';
 
 interface Props {
   vests: VestWithData[];
-  muted: boolean;
-  onMute: () => void;
+  isMuted: (incidentId: number) => boolean;
+  canAct: boolean;
+  escalationS: number;
+  onMute: (incidentId: number, vestId: number) => void;
   onDismiss: (incidentId: number, vestId: number, notes?: string) => void;
-  onAck: (incidentId: number) => void;
+  onAck: (incidentId: number, vestId: number) => void;
   now: number;
 }
 
-export default function AlarmBanner({ vests, muted, onMute, onDismiss, onAck, now }: Props) {
-  const { user } = useAuth();
+export default function AlarmBanner({ vests, isMuted, canAct, escalationS, onMute, onDismiss, onAck, now }: Props) {
   const dangerVests = vests.filter(v => v.incident && !v.incident.resolved_at);
 
   if (dangerVests.length === 0) return null;
-
-  const canAct = user && (user.role === 'operator' || user.role === 'admin');
 
   return (
     <div className="border-b border-alert/30 bg-alert/10">
@@ -28,8 +24,9 @@ export default function AlarmBanner({ vests, muted, onMute, onDismiss, onAck, no
         const sinceMs = now - new Date(inc.opened_at).getTime();
         const sinceMin = Math.floor(sinceMs / 60000);
         const sinceSec = Math.floor(sinceMs % 60000 / 1000);
+        const muted = isMuted(inc.id) || !!inc.muted_at;
         const notAcked = !inc.acknowledged_at;
-        const escalating = notAcked && sinceMs > 60_000;
+        const escalating = notAcked && sinceMs > escalationS * 1000;
 
         return (
           <div
@@ -57,14 +54,14 @@ export default function AlarmBanner({ vests, muted, onMute, onDismiss, onAck, no
                 <>
                   {notAcked && (
                     <button
-                      onClick={() => onAck(inc.id)}
+                      onClick={() => onAck(inc.id, v.id)}
                       className="rounded-lg border border-white/20 bg-ink-700 px-3 py-1.5 text-xs font-medium text-white hover:bg-ink-600"
                     >
                       Ack
                     </button>
                   )}
                   <button
-                    onClick={onMute}
+                    onClick={() => onMute(inc.id, v.id)}
                     className={`rounded-lg px-3 py-1.5 text-xs font-medium ${
                       muted ? 'bg-white/10 text-white/40' : 'border border-white/20 bg-ink-700 text-white hover:bg-ink-600'
                     }`}
