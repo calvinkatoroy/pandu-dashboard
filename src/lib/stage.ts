@@ -1,4 +1,4 @@
-import type { EventType, HelmetState, Stage } from './types';
+import type { HelmetState, Stage } from './types';
 
 export const STAGE_META: Record<
   Stage,
@@ -28,23 +28,8 @@ export function batColor(mv: number | null, lowMv: number): string {
   return '#1fa37a';
 }
 
-export interface StageInput {
-  type: EventType;
-  helm: HelmetState | null;
-  bat_mv: number | null;
-  lastSeenSecondsAgo: number;
-  hasOpenDanger: boolean;
-  settings: { heartbeat_timeout_s: number; helmet_threshold_s: number; battery_low_mv: number };
-}
-
-export function computeStage(i: StageInput): Stage {
-  if (i.type === 'OFF') return 'inactive';
-  if (i.hasOpenDanger) return 'danger';
-  if (i.lastSeenSecondsAgo > i.settings.heartbeat_timeout_s) return 'warning';
-  if (i.helm !== null && i.helm !== 1) return 'warning';
-  if (i.bat_mv !== null && i.bat_mv < i.settings.battery_low_mv) return 'warning';
-  return 'safe';
-}
+export { computeStage } from '../../supabase/functions/_shared/stage.ts';
+export type { StageInput } from '../../supabase/functions/_shared/stage.ts';
 
 export function rssiBars(rssi: number | null): number {
   if (rssi === null) return 0;

@@ -25,6 +25,10 @@ export default function SimulatorPanel({ simMode, vestCount, onApplyLocal, fleet
       setLastResult(`✓ skenario "${scenario}" diterapkan ke Vest ${vestId} (lokal)`);
       return;
     }
+    if (!import.meta.env.DEV) {
+      setLastResult('Kirim ke ingest hanya tersedia di build dev (key tidak disertakan di produksi)');
+      return;
+    }
     setBusy(true);
     setLastResult(null);
     const payload = buildSimulatedPayload(scenario, vestId);
@@ -40,7 +44,7 @@ export default function SimulatorPanel({ simMode, vestCount, onApplyLocal, fleet
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'x-device-key': 'pandu-gw1-dev-key',
+          'x-device-key': import.meta.env.VITE_GATEWAY_DEVICE_KEY ?? '',
         },
         body: JSON.stringify(payload),
       });

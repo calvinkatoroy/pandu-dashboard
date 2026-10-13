@@ -107,7 +107,7 @@ Respons:
 ```json
 {"accepted": 1, "duplicates": 0, "rejected": []}
 ```
-Kode: `200` sukses (Gateway menghapus event dari antrean SD), `401` kunci salah, `422` validasi gagal (`rejected` berisi indeks dan alasan), `429` terlalu sering, `5xx` coba lagi (backoff).
+Kode: `200` sukses (Gateway menghapus event dari antrean SD), `401` kunci salah, `422` validasi gagal atau `gateway_id` tidak terdaftar (`rejected` berisi indeks dan alasan per event), `429` terlalu sering (maks 30 request/menit per gateway), `5xx` coba lagi (backoff).
 
 Validasi: `type` ∈ {HB,SOS,FALL,MOB,OFF}; `vest_id` 1-8; `helm` ∈ {0,1,2}; `bat_mv` 2500-4500; `lat` -90..90, `lon` -180..180; `rssi` -140..0.
 
@@ -118,7 +118,7 @@ Validasi: `type` ∈ {HB,SOS,FALL,MOB,OFF}; `vest_id` 1-8; `helm` ∈ {0,1,2}; `
 | Stage | Aturan | Catatan |
 |---|---|---|
 | 3 Danger | Ada insiden `SOS`/`FALL`/`MOB` terbuka | Alarm suara |
-| 2 Warning | helm ≠ 1 lebih dari 30 s, atau tidak ada heartbeat > **120 s** (tidak terjangkau/inaktif), atau `bat_mv` < 3500 | Visual saja |
+| 2 Warning | helm ≠ 1 terus-menerus ≥ `helmet_threshold_s` (30 s; dihitung dari `vest_state.helm_off_since`), atau tidak ada heartbeat > **120 s** (tidak terjangkau/inaktif), atau `bat_mv` < 3500 | Visual saja |
 | 1 Aman | Heartbeat normal, helm = 1, tidak ada insiden | - |
 | Nonaktif | Paket `OFF` | Bukan warning |
 
@@ -148,3 +148,4 @@ Prioritas Danger > Warning > Aman. Danger padam otomatis bila 2 heartbeat bertur
 | Tanggal | Versi | Perubahan |
 |---|---|---|
 | 12 Okt 2026 | Draf | Dokumen dibuat dari firmware v1 dan usulan v2 |
+| 13 Okt 2026 | Draf | Ingest: validasi per event, event lama tidak menimpa state, aturan helm 30 s di server (migrasi 0004), 429, gateway tak dikenal 422. Logika stage di `supabase/functions/_shared/stage.ts` (dipakai server dan client). |

@@ -1,14 +1,34 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { computeStage, validateEvent } from '../_shared/stage.ts';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SERVICE_ROLE = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+// Disarankan: supabase secrets set GATEWAY_DEVICE_KEY=...  (fallback: settings.gateway_device_key)
+const ENV_DEVICE_KEY = Deno.env.get('GATEWAY_DEVICE_KEY');
 
 const supabase = createClient(SUPABASE_URL, SERVICE_ROLE, {
   auth: { persistSession: false },
 });
 
-const VALID_TYPES = ['HB', 'SOS', 'FALL', 'MOB', 'OFF'];
 const DANGER_TYPES = ['SOS', 'FALL', 'MOB'];
+
+// Rate limit per isolate (ponytail: counter di memori, per-instance; pindah ke tabel bila butuh global)
+const RATE_MAX = 30;
+const hits = new Map<string, number[]>();
+function rateLimited(id: string): boolean {
+  const now = Date.now();
+  const recent = (hits.get(id) ?? []).filter(t => now - t < 60_000);
+  recent.push(now);
+  hits.set(id, recent);
+  return recent.length > RATE_MAX;
+}
+
+function safeEqual(a: string, b: string): boolean {
+  const x = new TextEncoder().encode(a), y = new TextEncoder().encode(b);
+  let d = x.length ^ y.length;
+  for (let i = 0; i < Math.max(x.length, y.length); i++) d |= (x[i] ?? 0) ^ (y[i] ?? 0);
+  return d === 0;
+}
 
 function cors(res: Response) {
   res.headers.set('Access-Control-Allow-Origin', '*');
@@ -37,229 +57,162 @@ interface IngestEvent {
   received_at: string;
 }
 
-const isInt = (v: unknown, lo: number, hi: number) =>
-  typeof v === 'number' && Number.isInteger(v) && v >= lo && v <= hi;
-const isNum = (v: unknown, lo: number, hi: number) =>
-  typeof v === 'number' && Number.isFinite(v) && v >= lo && v <= hi;
-
-function validateEvent(ev: unknown): string | null {
-  if (!ev || typeof ev !== 'object') return 'event is not an object';
-  const e = ev as Record<string, unknown>;
-  if (typeof e.type !== 'string' || !VALID_TYPES.includes(e.type)) return `invalid type: ${e.type}`;
-  if (!isInt(e.vest_id, 1, 8)) return `vest_id out of range: ${e.vest_id}`;
-  if (!isInt(e.seq, 0, 65535)) return `seq out of range: ${e.seq}`;
-  if (!isInt(e.helm, 0, 2)) return `invalid helm: ${e.helm}`;
-  if (!isInt(e.bat_mv, 2500, 4500)) return `bat_mv out of range: ${e.bat_mv}`;
-  if (e.lat !== null && !isNum(e.lat, -90, 90)) return 'lat out of range';
-  if (e.lon !== null && !isNum(e.lon, -180, 180)) return 'lon out of range';
-  if (!isInt(e.rssi, -140, 0)) return `rssi out of range: ${e.rssi}`;
-  if (typeof e.received_at !== 'string' || isNaN(Date.parse(e.received_at))) return 'invalid received_at';
-  return null;
-}
 
 async function getSettings() {
   const { data } = await supabase.from('settings').select('key, value');
   const map: Record<string, string> = {};
   (data ?? []).forEach(r => { map[r.key] = r.value; });
+  const num = (k: string, d: number) => parseInt(map[k] ?? '') || d;
   return {
-    heartbeat_timeout_s: parseInt(map.heartbeat_timeout_s ?? '120'),
-    battery_low_mv: parseInt(map.battery_low_mv ?? '3500'),
-    danger_auto_clear_hb: parseInt(map.danger_auto_clear_hb ?? '2'),
+    heartbeat_timeout_s: num('heartbeat_timeout_s', 120),
+    helmet_threshold_s: num('helmet_threshold_s', 30),
+    battery_low_mv: num('battery_low_mv', 3500),
+    danger_auto_clear_hb: num('danger_auto_clear_hb', 2),
+    gateway_device_key: map.gateway_device_key as string | undefined,
   };
 }
 
+interface OpenIncident { id: number; last_event_at: string }
+
 Deno.serve(async (req) => {
-  if (req.method === 'OPTIONS') {
-    return cors(new Response(null, { status: 204 }));
-  }
-  if (req.method !== 'POST') {
-    return json({ error: 'method not allowed' }, 405);
-  }
+  if (req.method === 'OPTIONS') return cors(new Response(null, { status: 204 }));
+  if (req.method !== 'POST') return json({ error: 'method not allowed' }, 405);
 
   const deviceKey = req.headers.get('x-device-key');
-  if (!deviceKey) {
-    return json({ error: 'missing x-device-key' }, 401);
-  }
+  if (!deviceKey) return json({ error: 'missing x-device-key' }, 401);
 
-  // Verify device key against settings
-  const { data: keyRow } = await supabase
-    .from('settings')
-    .select('value')
-    .eq('key', 'gateway_device_key')
-    .single();
-  if (!keyRow || keyRow.value !== deviceKey) {
-    return json({ error: 'invalid device key' }, 401);
-  }
+  const settings = await getSettings();
+  const expected = ENV_DEVICE_KEY ?? settings.gateway_device_key;
+  if (!expected || !safeEqual(deviceKey, expected)) return json({ error: 'invalid device key' }, 401);
 
-  let body: { gateway_id: string; sent_at: string; events: IngestEvent[] };
+  let body: { gateway_id: string; sent_at: string; events: unknown[] };
   try {
     body = JSON.parse(await req.text());
   } catch {
     return json({ error: 'invalid JSON' }, 422);
   }
-
   if (!body || typeof body.gateway_id !== 'string' || !body.gateway_id || !Array.isArray(body.events) || body.events.length === 0) {
     return json({ error: 'missing gateway_id or events' }, 422);
   }
-  if (body.events.length > 100) {
-    return json({ error: 'too many events (max 100)' }, 422);
-  }
+  if (body.events.length > 100) return json({ error: 'too many events (max 100)' }, 422);
 
-  const settings = await getSettings();
-  let accepted = 0;
-  let duplicates = 0;
+  if (rateLimited(body.gateway_id)) return json({ error: 'too many requests' }, 429);
 
-  // Validasi dulu (indeks asli dipertahankan), lalu proses yang valid urut terlama.
+  const { data: gw } = await supabase.from('gateways').select('id').eq('id', body.gateway_id).maybeSingle();
+  if (!gw) return json({ error: `unknown gateway_id: ${body.gateway_id}` }, 422);
+
+  // Validasi per event (indeks asli dipertahankan), proses yang valid urut terlama.
   const rejected: { index: number; reason: string }[] = [];
   const valid: { ev: IngestEvent; index: number }[] = [];
   body.events.forEach((raw, index) => {
     const err = validateEvent(raw);
     if (err) rejected.push({ index, reason: err });
-    else valid.push({ ev: raw, index });
+    else valid.push({ ev: raw as IngestEvent, index });
   });
   valid.sort((x, y) => Date.parse(x.ev.received_at) - Date.parse(y.ev.received_at));
+  if (valid.length === 0) return json({ accepted: 0, duplicates: 0, rejected });
 
-  for (const { ev, index: originalIndex } of valid) {
-    // Insert event (idempotent via unique constraint)
-    const { data: inserted, error } = await supabase.from('events').insert({
-      gateway_id: body.gateway_id,
-      vest_id: ev.vest_id,
-      seq: ev.seq,
-      type: ev.type,
-      lat: ev.lat,
-      lon: ev.lon,
-      pos_age_s: ev.pos_age_s,
-      bat_mv: ev.bat_mv,
-      helm: ev.helm,
-      rssi: ev.rssi,
-      snr: ev.snr,
-      received_at: ev.received_at,
-    }).select('id').single();
+  // Satu insert untuk semua event; baris duplikat (gateway_id, vest_id, seq) diabaikan oleh DB.
+  const rows = valid.map(({ ev }) => ({
+    gateway_id: body.gateway_id, vest_id: ev.vest_id, seq: ev.seq, type: ev.type,
+    lat: ev.lat, lon: ev.lon, pos_age_s: ev.pos_age_s ?? null, bat_mv: ev.bat_mv,
+    helm: ev.helm, rssi: ev.rssi, snr: ev.snr ?? null, received_at: ev.received_at,
+  }));
+  const { data: inserted, error: insErr } = await supabase.from('events')
+    .upsert(rows, { onConflict: 'gateway_id,vest_id,seq', ignoreDuplicates: true })
+    .select('id, vest_id, seq');
+  if (insErr) return json({ error: insErr.message }, 500);
 
-    if (error) {
-      if (error.code === '23505') {
-        // unique violation — duplicate
-        duplicates++;
-        continue;
-      }
-      rejected.push({ index: originalIndex, reason: error.message });
-      continue;
-    }
+  const idBySeq = new Map((inserted ?? []).map(r => [`${r.vest_id}:${r.seq}`, r.id as number]));
+  const fresh = valid.filter(({ ev }) => idBySeq.has(`${ev.vest_id}:${ev.seq}`));
+  const accepted = fresh.length;
+  const duplicates = valid.length - accepted;
+  if (accepted === 0) return json({ accepted, duplicates, rejected });
 
-    accepted++;
+  const vestIds = [...new Set(fresh.map(({ ev }) => ev.vest_id))];
+  const [{ data: openRows }, { data: stateRows }] = await Promise.all([
+    supabase.from('incidents').select('id, vest_id, last_event_at').in('vest_id', vestIds).is('resolved_at', null),
+    supabase.from('vest_state').select('vest_id, last_seen_at, helm_off_since').in('vest_id', vestIds),
+  ]);
+  const open = new Map<number, OpenIncident | null>(vestIds.map(v => [v, null]));
+  (openRows ?? []).forEach(r => open.set(r.vest_id, { id: r.id, last_event_at: r.last_event_at }));
+  const prev = new Map((stateRows ?? []).map(r => [r.vest_id as number, r]));
 
-    // Update gateway last_seen
-    await supabase.from('gateways')
-      .update({ last_seen_at: ev.received_at, status: 'online' })
-      .eq('id', body.gateway_id);
+  // Per Vest: logika insiden per event, lalu vest_state ditulis sekali dari event terbaru.
+  const lastByVest = new Map<number, { ev: IngestEvent; id: number }>();
+  const helmOff = new Map<number, string | null>(vestIds.map(v => [v, prev.get(v)?.helm_off_since ?? null]));
 
-    // Handle incident logic for danger types
+  for (const { ev } of fresh) {
+    const inc = open.get(ev.vest_id) ?? null;
+
     if (DANGER_TYPES.includes(ev.type)) {
-      // Check for existing open incident for this vest
-      const { data: openIncident } = await supabase
-        .from('incidents')
-        .select('id')
-        .eq('vest_id', ev.vest_id)
-        .is('resolved_at', null)
-        .maybeSingle();
-
-      if (openIncident) {
-        // Update existing incident
-        await supabase.from('incidents').update({
-          kind: ev.type as 'SOS' | 'FALL' | 'MOB',
-          last_event_at: ev.received_at,
-        }).eq('id', openIncident.id);
+      if (inc) {
+        await supabase.from('incidents').update({ kind: ev.type, last_event_at: ev.received_at }).eq('id', inc.id);
+        open.set(ev.vest_id, { id: inc.id, last_event_at: ev.received_at });
       } else {
-        // Open new incident
-        await supabase.from('incidents').insert({
-          vest_id: ev.vest_id,
-          kind: ev.type as 'SOS' | 'FALL' | 'MOB',
-          stage: 'danger',
-          opened_at: ev.received_at,
-          last_event_at: ev.received_at,
-        });
-      }
-    }
-
-    // Auto-resolve danger if 2 clean heartbeats
-    if (ev.type === 'HB') {
-      const { data: openIncident } = await supabase
-        .from('incidents')
-        .select('id, last_event_at')
-        .eq('vest_id', ev.vest_id)
-        .is('resolved_at', null)
-        .maybeSingle();
-
-      if (openIncident) {
-        // Count clean heartbeats since last danger event
-        const { data: recentHbs } = await supabase
-          .from('events')
-          .select('type, received_at')
-          .eq('vest_id', ev.vest_id)
-          .gt('received_at', openIncident.last_event_at)
-          .order('received_at', { ascending: true });
-
-        const cleanHbs = (recentHbs ?? []).filter(e => e.type === 'HB');
-        if (cleanHbs.length >= settings.danger_auto_clear_hb) {
-          await supabase.from('incidents').update({
-            resolved_at: ev.received_at,
-            resolution: 'auto',
-          }).eq('id', openIncident.id);
+        const { data: created, error } = await supabase.from('incidents').insert({
+          vest_id: ev.vest_id, kind: ev.type, stage: 'danger',
+          opened_at: ev.received_at, last_event_at: ev.received_at,
+        }).select('id, last_event_at').single();
+        if (error) { // unique index: request lain sudah membuka insiden, cukup perbarui
+          await supabase.from('incidents').update({ kind: ev.type, last_event_at: ev.received_at })
+            .eq('vest_id', ev.vest_id).is('resolved_at', null);
+          open.set(ev.vest_id, { id: -1, last_event_at: ev.received_at });
+        } else {
+          open.set(ev.vest_id, { id: created.id, last_event_at: created.last_event_at });
         }
       }
+    } else if (ev.type === 'HB' && inc && inc.id > 0) {
+      // Hitung HB bersih dari DB agar HB dari request lain ikut terhitung.
+      const { count } = await supabase.from('events').select('id', { count: 'exact', head: true })
+        .eq('vest_id', ev.vest_id).eq('type', 'HB').gt('received_at', inc.last_event_at);
+      if ((count ?? 0) >= settings.danger_auto_clear_hb) {
+        await supabase.from('incidents').update({ resolved_at: ev.received_at, resolution: 'auto' }).eq('id', inc.id);
+        open.set(ev.vest_id, null);
+      }
     }
 
-    // Compute and update vest_state
-    const { data: openInc } = await supabase
-      .from('incidents')
-      .select('id')
-      .eq('vest_id', ev.vest_id)
-      .is('resolved_at', null)
-      .maybeSingle();
-
-    const hasOpenDanger = !!openInc;
-    let stage: string;
-    if (ev.type === 'OFF') {
-      stage = 'inactive';
-    } else if (hasOpenDanger) {
-      stage = 'danger';
-    } else if (ev.bat_mv < settings.battery_low_mv) {
-      stage = 'warning';
-    } else if (ev.helm !== 1) {
-      stage = 'warning';
-    } else {
-      stage = 'safe';
+    // Lacak sejak kapan helm tidak dipakai
+    const state = prev.get(ev.vest_id);
+    if (!state?.last_seen_at || Date.parse(ev.received_at) >= Date.parse(state.last_seen_at)) {
+      if (ev.helm === 1) helmOff.set(ev.vest_id, null);
+      else if (!helmOff.get(ev.vest_id)) helmOff.set(ev.vest_id, ev.received_at);
     }
+    lastByVest.set(ev.vest_id, { ev, id: idBySeq.get(`${ev.vest_id}:${ev.seq}`)! });
+  }
+
+  for (const [vestId, { ev, id }] of lastByVest) {
+    // Event lama (backlog SD) tidak boleh menimpa state yang lebih baru.
+    const lastSeen = prev.get(vestId)?.last_seen_at;
+    if (lastSeen && Date.parse(lastSeen) > Date.parse(ev.received_at)) continue;
+
+    const hasOpenDanger = !!open.get(vestId);
+    const offSince = helmOff.get(vestId);
+    const helmOffSeconds = offSince ? (Date.parse(ev.received_at) - Date.parse(offSince)) / 1000 : 0;
+    const stage = computeStage({
+      type: ev.type, helm: ev.helm, bat_mv: ev.bat_mv, lastSeenSecondsAgo: 0,
+      helmOffSeconds, hasOpenDanger, settings,
+    });
 
     let statusText = 'Heartbeat normal';
     if (ev.type === 'OFF') statusText = 'Vest dimatikan';
     else if (hasOpenDanger) statusText = `${ev.type} aktif`;
     else if (ev.bat_mv < settings.battery_low_mv) statusText = 'Baterai rendah';
-    else if (ev.helm !== 1) statusText = ev.helm === 0 ? 'Helm jauh' : 'Helm tidak terdengar';
+    else if (stage === 'warning' && ev.helm !== 1) statusText = ev.helm === 0 ? 'Helm jauh' : 'Helm tidak terdengar';
     else if (ev.lat === null) statusText = 'Posisi belum tersedia';
 
-    // Event lama (backlog SD) tidak boleh menimpa state yang lebih baru.
-    const { data: cur } = await supabase.from('vest_state')
-      .select('last_seen_at').eq('vest_id', ev.vest_id).maybeSingle();
-    if (cur?.last_seen_at && Date.parse(cur.last_seen_at) > Date.parse(ev.received_at)) continue;
-
     await supabase.from('vest_state').upsert({
-      vest_id: ev.vest_id,
-      last_event_id: inserted?.id ?? null,
-      stage,
-      status_text: statusText,
-      lat: ev.lat,
-      lon: ev.lon,
-      pos_fix_at: ev.lat !== null ? ev.received_at : null,
-      bat_mv: ev.bat_mv,
-      helm: ev.helm,
-      rssi: ev.rssi,
-      snr: ev.snr,
-      last_seen_at: ev.received_at,
-      offline: ev.type === 'OFF',
+      vest_id: vestId, last_event_id: id, stage, status_text: statusText,
+      lat: ev.lat, lon: ev.lon, pos_fix_at: ev.lat !== null ? ev.received_at : null,
+      bat_mv: ev.bat_mv, helm: ev.helm, helm_off_since: offSince ?? null,
+      rssi: ev.rssi, snr: ev.snr ?? null,
+      last_seen_at: ev.received_at, offline: ev.type === 'OFF',
       updated_at: new Date().toISOString(),
     }, { onConflict: 'vest_id' });
   }
+
+  const newest = fresh[fresh.length - 1].ev.received_at;
+  await supabase.from('gateways').update({ last_seen_at: newest, status: 'online' }).eq('id', body.gateway_id);
 
   return json({ accepted, duplicates, rejected });
 });
