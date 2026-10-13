@@ -45,31 +45,32 @@ export default function Layout({ simMode, setSimMode, user, onSignOut, children 
       {/* Top status bar */}
       <header className="flex items-center justify-between border-b border-white/5 bg-ink-900/90 px-4 py-2.5 backdrop-blur">
         <div className="flex items-center gap-3">
-          <span className="font-display text-xl tracking-wider">
-            PAN<span className="text-safe">DU</span>
-          </span>
-          <span className="hidden text-xs text-white/40 sm:inline">Pilot Safety Dashboard</span>
+          <span className="font-display text-xl tracking-wide">PANDU</span>
+          <span className="hidden text-sm text-white/60 sm:inline">Dasbor keselamatan pandu</span>
         </div>
         <div className="flex items-center gap-3">
           <button
             id="sim-mode-toggle"
             onClick={() => setSimMode(!simMode)}
             title={simMode ? 'Data simulator lokal' : 'Data live dari Supabase'}
-            className={`rounded border px-2.5 py-1 font-mono text-[10px] uppercase tracking-wider transition-colors ${
+            className={`min-h-[36px] rounded-lg border px-3 text-xs font-semibold transition-colors ${
               simMode ? 'border-caution/40 bg-caution/10 text-caution' : 'border-safe/40 bg-safe/10 text-safe'
             }`}
           >
-            ● {simMode ? 'Sim' : 'Live'}
+            {simMode ? 'Simulasi' : 'Live'}
           </button>
-          <div className="font-mono text-xs tabular text-white/50">{wib(now)} WIB</div>
+          <div className="text-right leading-tight">
+            <div className="text-lg font-bold tabular">{wib(now)} <span className="text-sm font-semibold text-white/55">WIB</span></div>
+            <div className="hidden text-[11px] text-white/55 sm:block">{new Date(now).toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'Asia/Jakarta' })}</div>
+          </div>
           {user && (
             <div className="hidden items-center gap-2 md:flex">
               <span className="text-xs text-white/60">{user.name}</span>
-              <span className="rounded bg-white/10 px-1.5 py-0.5 font-mono text-[10px] uppercase text-white/50">{user.role}</span>
+              <span className="rounded bg-white/10 px-1.5 py-0.5 font-mono text-[11px] uppercase text-white/50">{user.role}</span>
             </div>
           )}
           {user && (
-            <button id="signout-btn" onClick={onSignOut} title="Keluar" className="text-white/40 transition hover:text-white">
+            <button id="signout-btn" onClick={onSignOut} title="Keluar" className="text-white/55 transition hover:text-white">
               {ICONS.logout}
             </button>
           )}
@@ -86,8 +87,8 @@ export default function Layout({ simMode, setSimMode, user, onSignOut, children 
               end={item.to === '/'}
               id={`nav-${item.icon}`}
               className={({ isActive }) =>
-                `flex w-16 flex-col items-center gap-1 rounded-xl py-2 text-[10px] font-medium transition-all ${
-                  isActive ? 'bg-safe/15 text-safe' : 'text-white/40 hover:bg-white/5 hover:text-white/70'
+                `flex w-16 flex-col items-center gap-1 rounded-xl py-2 text-[11px] font-medium transition-all ${
+                  isActive ? 'bg-white/12 text-white' : 'text-white/60 hover:bg-white/5 hover:text-white'
                 }`
               }
             >
@@ -108,8 +109,8 @@ export default function Layout({ simMode, setSimMode, user, onSignOut, children 
             to={item.to}
             end={item.to === '/'}
             className={({ isActive }) =>
-              `flex min-h-[44px] min-w-[44px] flex-col items-center justify-center gap-0.5 px-1.5 py-1.5 text-[10px] font-medium transition-colors ${
-                isActive ? 'text-safe' : 'text-white/40'
+              `flex min-h-[44px] min-w-[44px] flex-col items-center justify-center gap-0.5 px-1.5 py-1.5 text-[11px] font-medium transition-colors ${
+                isActive ? 'text-white' : 'text-white/60'
               }`
             }
           >

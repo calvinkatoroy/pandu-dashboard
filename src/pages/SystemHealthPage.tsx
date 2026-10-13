@@ -87,7 +87,7 @@ export default function SystemHealthPage({ simMode, role }: Props) {
             <Stat label="WiFi" value={gateway.wifi_ok ? 'OK' : 'Putus'} color={gateway.wifi_ok ? 'var(--safe)' : 'var(--alert)'} />
           </div>
         ) : (
-          <p className="text-xs text-white/40">Belum ada Gateway terdaftar.</p>
+          <p className="text-xs text-white/55">Belum ada Gateway terdaftar.</p>
         )}
       </Card>
 
@@ -101,17 +101,17 @@ export default function SystemHealthPage({ simMode, role }: Props) {
           {pts.length ? (
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={pts.map(p => ({ ...p, label: wib(p.t) }))}>
-                <CartesianGrid stroke="rgba(244,241,234,0.06)" />
-                <XAxis dataKey="label" tick={{ fill: 'rgba(244,241,234,0.4)', fontSize: 10 }} minTickGap={40} />
-                <YAxis yAxisId="r" domain={[-130, -40]} tick={{ fill: 'rgba(244,241,234,0.4)', fontSize: 10 }} width={36} />
-                <YAxis yAxisId="s" orientation="right" domain={[-10, 15]} tick={{ fill: 'rgba(244,241,234,0.4)', fontSize: 10 }} width={28} />
-                <Tooltip contentStyle={{ background: '#12293d', border: '1px solid rgba(244,241,234,0.1)', borderRadius: 8, fontSize: 12 }} />
-                <Line yAxisId="r" type="monotone" dataKey="rssi" name="RSSI (dBm)" stroke="#1fa37a" dot={false} strokeWidth={2} />
-                <Line yAxisId="s" type="monotone" dataKey="snr" name="SNR (dB)" stroke="#e0a83e" dot={false} strokeWidth={1.5} />
+                <CartesianGrid stroke="rgba(236,239,241,0.06)" />
+                <XAxis dataKey="label" tick={{ fill: 'rgba(236,239,241,0.4)', fontSize: 10 }} minTickGap={40} />
+                <YAxis yAxisId="r" domain={[-130, -40]} tick={{ fill: 'rgba(236,239,241,0.4)', fontSize: 10 }} width={36} />
+                <YAxis yAxisId="s" orientation="right" domain={[-10, 15]} tick={{ fill: 'rgba(236,239,241,0.4)', fontSize: 10 }} width={28} />
+                <Tooltip contentStyle={{ background: '#161b21', border: '1px solid rgba(236,239,241,0.1)', borderRadius: 8, fontSize: 12 }} />
+                <Line yAxisId="r" type="monotone" dataKey="rssi" name="RSSI (dBm)" stroke="#79b99c" dot={false} strokeWidth={2} />
+                <Line yAxisId="s" type="monotone" dataKey="snr" name="SNR (dB)" stroke="#e6b04b" dot={false} strokeWidth={1.5} />
               </LineChart>
             </ResponsiveContainer>
           ) : (
-            <p className="py-16 text-center text-xs text-white/30">Belum ada paket 24 jam terakhir</p>
+            <p className="py-16 text-center text-xs text-white/55">Belum ada paket 24 jam terakhir</p>
           )}
         </div>
       </Card>
@@ -123,7 +123,7 @@ export default function SystemHealthPage({ simMode, role }: Props) {
             <Stat key={t} label={t} value={counts[t] ?? 0} color={['SOS', 'FALL', 'MOB'].includes(t) && counts[t] ? 'var(--alert)' : undefined} />
           ))}
         </div>
-        <p className="mt-2 text-[11px] text-white/35">
+        <p className="mt-2 text-[11px] text-white/55">
           Paket rusak (<code>bad_packet</code>) masih dicatat di serial Gateway saja; belum dikirim ke cloud.
         </p>
       </Card>
@@ -140,13 +140,13 @@ export default function SystemHealthPage({ simMode, role }: Props) {
         )}
       >
         {!canSeeAudit ? (
-          <p className="text-xs text-white/40">Hanya operator/admin yang dapat melihat audit log.</p>
+          <p className="text-xs text-white/55">Hanya operator/admin yang dapat melihat audit log.</p>
         ) : audit.length === 0 ? (
-          <p className="text-xs text-white/30">Belum ada aksi tercatat.</p>
+          <p className="text-xs text-white/55">Belum ada aksi tercatat.</p>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs">
-              <thead className="text-[10px] uppercase tracking-wider text-white/30">
+              <thead className="text-[11px] uppercase tracking-wider text-white/55">
                 <tr><th className="py-1.5 pr-3">Waktu</th><th className="pr-3">Pengguna</th><th className="pr-3">Aksi</th><th>Target</th></tr>
               </thead>
               <tbody className="divide-y divide-white/5">

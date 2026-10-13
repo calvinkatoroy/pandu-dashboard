@@ -1,5 +1,5 @@
 import type { VestWithData } from '../hooks/useVestData';
-import { STAGE_META, batPercent, batColor, helmLabel, rssiBars, rssiLabel } from '../lib/stage';
+import { STAGE_META, effectiveStage, batPercent, batColor, helmLabel, rssiBars, rssiLabel } from '../lib/stage';
 import { ago, coord, wib } from '../lib/format';
 import { useNavigate } from 'react-router-dom';
 
@@ -14,7 +14,7 @@ interface Props {
 export default function VestHero({ vest, now, lowBatMv, heartbeatTimeoutS }: Props) {
   const navigate = useNavigate();
   const s = vest.state;
-  const stage = s?.stage ?? 'inactive';
+  const stage = effectiveStage(s, heartbeatTimeoutS, now);
   const meta = STAGE_META[stage];
   const bat = batPercent(s?.bat_mv ?? null);
   const bars = rssiBars(s?.rssi ?? null);
@@ -25,13 +25,13 @@ export default function VestHero({ vest, now, lowBatMv, heartbeatTimeoutS }: Pro
   return (
     <div className="flex h-full flex-col overflow-y-auto">
       <div
-        className={`relative overflow-hidden px-5 py-5 ${stage === 'danger' ? 'danger-pulse' : ''}`}
-        style={{ background: `linear-gradient(135deg, ${meta.bg}, transparent 80%)`, borderBottom: `1px solid ${meta.border}` }}
+        className={`relative overflow-hidden px-5 py-5 ${stage === 'danger' ? 'alarm-ring' : ''}`}
+        style={{ background: stage === 'safe' ? 'transparent' : meta.bg, borderBottom: `1px solid ${stage === 'safe' ? 'var(--line)' : meta.border}` }}
       >
         <div className="flex items-start justify-between gap-3">
           <div>
-            <div className="font-mono text-[10px] uppercase tracking-[0.2em] text-white/40">Vest #{vest.id}</div>
-            <h2 className="font-display text-4xl leading-none" style={{ color: meta.color }}>{vest.name}</h2>
+            <div className="text-xs font-semibold text-white/55">Vest #{vest.id}</div>
+            <h2 className="font-display text-3xl leading-none" style={{ color: stage === "safe" ? "var(--text)" : meta.color }}>{vest.name}</h2>
             {vest.assigned_to && <div className="mt-1 text-sm text-white/60">{vest.assigned_to}</div>}
           </div>
           <div
@@ -44,14 +44,14 @@ export default function VestHero({ vest, now, lowBatMv, heartbeatTimeoutS }: Pro
             </span>
           </div>
         </div>
-        <div className="mt-3 text-base font-medium" style={{ color: meta.color }}>
+        <div className="mt-3 text-base font-semibold" style={{ color: stage === "safe" ? "var(--text)" : meta.color }}>
           {stale ? 'Tidak terjangkau / inaktif' : s?.status_text ?? 'Belum ada data'}
-          {vest.incident && <span className="ml-2 rounded bg-alert px-1.5 py-0.5 font-mono text-[11px] text-white">{vest.incident.kind}</span>}
+          {vest.incident && <span className="ml-2 rounded bg-alert px-1.5 py-0.5 text-xs font-bold text-ink-900">{vest.incident.kind}</span>}
         </div>
 
         {/* Heartbeat timer */}
         <div className="mt-4">
-          <div className="mb-1 flex justify-between font-mono text-[10px] text-white/40">
+          <div className="mb-1 flex justify-between font-mono text-[11px] text-white/55">
             <span>terakhir terdengar {ago(s?.last_seen_at ?? null, now)}</span>
             <span>timeout {heartbeatTimeoutS}s</span>
           </div>
@@ -67,7 +67,7 @@ export default function VestHero({ vest, now, lowBatMv, heartbeatTimeoutS }: Pro
       <div className="grid grid-cols-2 gap-px bg-white/5">
         <Tile label="Baterai">
           <div className="font-mono text-2xl tabular" style={{ color: batColor(s?.bat_mv ?? null, lowBatMv) }}>{bat}%</div>
-          <div className="text-[11px] text-white/40">{s?.bat_mv ?? '—'} mV</div>
+          <div className="text-[11px] text-white/55">{s?.bat_mv ?? '—'} mV</div>
           <div className="mt-2 h-1.5 overflow-hidden rounded bg-white/10">
             <div className="h-full rounded" style={{ width: `${bat}%`, background: batColor(s?.bat_mv ?? null, lowBatMv) }} />
           </div>
@@ -76,7 +76,7 @@ export default function VestHero({ vest, now, lowBatMv, heartbeatTimeoutS }: Pro
           <div className="text-lg font-semibold" style={{ color: s?.helm === 1 ? 'var(--safe)' : s?.helm == null ? undefined : 'var(--caution)' }}>
             {helmLabel(s?.helm ?? null)}
           </div>
-          <div className="text-[11px] text-white/40">{vest.helmet_label ?? '—'}</div>
+          <div className="text-[11px] text-white/55">{vest.helmet_label ?? '—'}</div>
         </Tile>
         <Tile label="Link LoRa">
           <div className="flex items-end gap-2">
@@ -84,17 +84,17 @@ export default function VestHero({ vest, now, lowBatMv, heartbeatTimeoutS }: Pro
               {[1, 2, 3, 4, 5].map(i => (
                 <span key={i} className="w-1.5 rounded-sm" style={{
                   height: `${i * 4}px`,
-                  background: i <= bars ? 'var(--text)' : 'rgba(244,241,234,0.15)',
+                  background: i <= bars ? 'var(--text)' : 'rgba(236,239,241,0.15)',
                 }} />
               ))}
             </div>
             <span className="font-mono text-sm">{rssiLabel(s?.rssi ?? null)}</span>
           </div>
-          <div className="mt-1 text-[11px] text-white/40">SNR {s?.snr != null ? `${s.snr.toFixed(1)} dB` : '—'}</div>
+          <div className="mt-1 text-[11px] text-white/55">SNR {s?.snr != null ? `${s.snr.toFixed(1)} dB` : '—'}</div>
         </Tile>
         <Tile label="Posisi">
           <div className="font-mono text-xs tabular text-white/80">{coord(s?.lat ?? null, s?.lon ?? null)}</div>
-          <div className="mt-1 text-[11px] text-white/40">
+          <div className="mt-1 text-[11px] text-white/55">
             {s?.pos_fix_at ? `fix ${ago(s.pos_fix_at, now)} · ${wib(s.pos_fix_at)}` : 'posisi belum tersedia'}
           </div>
         </Tile>
@@ -116,7 +116,7 @@ export default function VestHero({ vest, now, lowBatMv, heartbeatTimeoutS }: Pro
 function Tile({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="bg-ink-800 px-4 py-3">
-      <div className="mb-1 text-[10px] uppercase tracking-wider text-white/30">{label}</div>
+      <div className="mb-1 text-[11px] uppercase tracking-wider text-white/55">{label}</div>
       {children}
     </div>
   );

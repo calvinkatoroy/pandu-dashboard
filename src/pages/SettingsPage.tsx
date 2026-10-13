@@ -96,9 +96,9 @@ export default function SettingsPage({ simMode, role }: Props) {
                     onChange={e => setValues({ ...values, [f.key]: Number(e.target.value) })}
                     className={`${inputCls} font-mono ${bad ? 'border-alert/60' : ''}`}
                   />
-                  <span className="w-10 text-xs text-white/40">{f.unit}</span>
+                  <span className="w-10 text-xs text-white/55">{f.unit}</span>
                 </div>
-                <span className="mt-1 block text-[11px] text-white/35">{f.help}</span>
+                <span className="mt-1 block text-[11px] text-white/55">{f.help}</span>
               </label>
             );
           })}
@@ -112,7 +112,7 @@ export default function SettingsPage({ simMode, role }: Props) {
           </span>
           {notifPerm === 'default' && <button onClick={askNotif} className={btnPrimary}>Izinkan notifikasi</button>}
         </div>
-        <p className="mt-2 text-[11px] text-white/35">
+        <p className="mt-2 text-[11px] text-white/55">
           Web Push saat aplikasi tertutup (PWA) direncanakan di Fase 3.
         </p>
       </Card>

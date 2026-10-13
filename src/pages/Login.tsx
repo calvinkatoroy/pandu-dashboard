@@ -25,10 +25,8 @@ export default function Login({ onUseSim }: { onUseSim?: () => void }) {
     <div className="flex min-h-screen items-center justify-center bg-ink-900 px-4">
       <div className="w-full max-w-sm">
         <div className="mb-8 text-center">
-          <div className="font-display text-4xl tracking-widest">
-            PAN<span className="text-safe">DU</span>
-          </div>
-          <p className="mt-1 text-sm text-white/40">Pilot Safety Dashboard</p>
+          <div className="font-display text-4xl tracking-wide">PANDU</div>
+          <p className="mt-1 text-sm text-white/55">Dasbor keselamatan pandu</p>
         </div>
 
         <div className="rounded-2xl border border-white/5 bg-ink-800 p-6">
@@ -36,7 +34,7 @@ export default function Login({ onUseSim }: { onUseSim?: () => void }) {
             <button
               onClick={() => setMode('signin')}
               className={`flex-1 rounded-lg py-2 text-sm font-medium transition-colors ${
-                mode === 'signin' ? 'bg-ink-700 text-white' : 'text-white/40'
+                mode === 'signin' ? 'bg-ink-700 text-white' : 'text-white/55'
               }`}
             >
               Masuk
@@ -44,7 +42,7 @@ export default function Login({ onUseSim }: { onUseSim?: () => void }) {
             <button
               onClick={() => setMode('signup')}
               className={`flex-1 rounded-lg py-2 text-sm font-medium transition-colors ${
-                mode === 'signup' ? 'bg-ink-700 text-white' : 'text-white/40'
+                mode === 'signup' ? 'bg-ink-700 text-white' : 'text-white/55'
               }`}
             >
               Daftar
@@ -58,7 +56,7 @@ export default function Login({ onUseSim }: { onUseSim?: () => void }) {
                 placeholder="Nama"
                 value={name}
                 onChange={e => setName(e.target.value)}
-                className="w-full rounded-lg border border-white/10 bg-ink-900 px-3 py-2.5 text-sm text-white placeholder:text-white/30 focus:border-safe/50 focus:outline-none"
+                className="w-full rounded-lg border border-white/10 bg-ink-900 px-3 py-2.5 text-sm text-white placeholder:text-white/55 focus:border-safe/50 focus:outline-none"
               />
             )}
             <input
@@ -67,7 +65,7 @@ export default function Login({ onUseSim }: { onUseSim?: () => void }) {
               required
               value={email}
               onChange={e => setEmail(e.target.value)}
-              className="w-full rounded-lg border border-white/10 bg-ink-900 px-3 py-2.5 text-sm text-white placeholder:text-white/30 focus:border-safe/50 focus:outline-none"
+              className="w-full rounded-lg border border-white/10 bg-ink-900 px-3 py-2.5 text-sm text-white placeholder:text-white/55 focus:border-safe/50 focus:outline-none"
             />
             <input
               type="password"
@@ -75,13 +73,13 @@ export default function Login({ onUseSim }: { onUseSim?: () => void }) {
               required
               value={password}
               onChange={e => setPassword(e.target.value)}
-              className="w-full rounded-lg border border-white/10 bg-ink-900 px-3 py-2.5 text-sm text-white placeholder:text-white/30 focus:border-safe/50 focus:outline-none"
+              className="w-full rounded-lg border border-white/10 bg-ink-900 px-3 py-2.5 text-sm text-white placeholder:text-white/55 focus:border-safe/50 focus:outline-none"
             />
             {err && <p className="text-xs text-alert">{err}</p>}
             <button
               type="submit"
               disabled={busy}
-              className="w-full rounded-lg bg-safe py-2.5 text-sm font-semibold text-white transition-colors hover:bg-safe/90 disabled:opacity-50"
+              className="w-full rounded-lg bg-safe py-3 text-sm font-semibold text-ink-900 transition-colors hover:bg-safe/90 disabled:opacity-50"
             >
               {busy ? '...' : mode === 'signin' ? 'Masuk' : 'Daftar'}
             </button>
@@ -92,7 +90,7 @@ export default function Login({ onUseSim }: { onUseSim?: () => void }) {
           <button
             id="use-sim-btn"
             onClick={onUseSim}
-            className="mt-4 w-full text-center text-xs text-white/40 underline-offset-2 hover:text-white/70 hover:underline"
+            className="mt-4 w-full text-center text-xs text-white/55 underline-offset-2 hover:text-white/70 hover:underline"
           >
             Kembali ke mode simulator (tanpa login)
           </button>

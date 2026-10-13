@@ -111,7 +111,7 @@ export default function AdminPage({ simMode, role }: Props) {
                 onChange={e => setDraft({ ...draft, mac: e.target.value })} />
             </label>
             <label className="flex items-center gap-2 self-end pb-2 text-sm text-white/70">
-              <input type="checkbox" checked={draft.active} onChange={e => setDraft({ ...draft, active: e.target.checked })} className="h-4 w-4 accent-[#1fa37a]" />
+              <input type="checkbox" checked={draft.active} onChange={e => setDraft({ ...draft, active: e.target.checked })} className="h-4 w-4 accent-[#79b99c]" />
               Aktif
             </label>
           </div>
@@ -124,7 +124,7 @@ export default function AdminPage({ simMode, role }: Props) {
 
       <Card title={`Daftar Vest (${vests.length}/8)`}>
         {vests.length === 0 ? (
-          <p className="py-6 text-center text-xs text-white/30">Belum ada Vest terdaftar</p>
+          <p className="py-6 text-center text-xs text-white/55">Belum ada Vest terdaftar</p>
         ) : (
           <div className="divide-y divide-white/5">
             {vests.map(v => (
@@ -132,9 +132,9 @@ export default function AdminPage({ simMode, role }: Props) {
                 <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-ink-900 font-mono text-sm text-white/70">{v.id}</span>
                 <div className="min-w-0 flex-1">
                   <div className="text-sm font-semibold">{v.name}
-                    {!v.active && <span className="ml-2 rounded bg-white/10 px-1.5 py-0.5 text-[10px] text-white/50">nonaktif</span>}
+                    {!v.active && <span className="ml-2 rounded bg-white/10 px-1.5 py-0.5 text-[11px] text-white/50">nonaktif</span>}
                   </div>
-                  <div className="truncate text-xs text-white/40">
+                  <div className="truncate text-xs text-white/55">
                     {v.assigned_to || 'belum ditugaskan'} · {v.helmet_label || 'tanpa label helm'}
                   </div>
                 </div>

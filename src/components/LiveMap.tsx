@@ -1,9 +1,9 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, CircleMarker, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import type { VestWithData } from '../hooks/useVestData';
 import type { Gateway } from '../lib/types';
-import { STAGE_META } from '../lib/stage';
+import { STAGE_META, effectiveStage } from '../lib/stage';
 import { coord, ago } from '../lib/format';
 import { useNavigate } from 'react-router-dom';
 
@@ -13,23 +13,24 @@ interface Props {
   selectedId: number | null;
   onSelect: (id: number) => void;
   now: number;
+  heartbeatTimeoutS: number;
 }
 
 function makeIcon(color: string, icon: string, isDanger: boolean) {
   return L.divIcon({
     className: '',
-    html: `<div style="position:relative;width:28px;height:28px;">
+    html: `<div style="position:relative;width:34px;height:34px;">
       ${isDanger ? `<div style="position:absolute;inset:0;border-radius:50%;background:${color};opacity:0.3;animation:danger-pulse 1s ease-in-out infinite;"></div>` : ''}
-      <div style="position:absolute;inset:2px;border-radius:50%;background:${color};border:2px solid #0a1c2b;display:flex;align-items:center;justify-content:center;font-size:10px;color:#fff;font-weight:bold;">${icon}</div>
+      <div style="position:absolute;inset:2px;border-radius:50%;background:${color};border:2px solid #0f1317;display:flex;align-items:center;justify-content:center;font-size:13px;color:#0f1317;font-weight:bold;">${icon}</div>
     </div>`,
-    iconSize: [28, 28],
-    iconAnchor: [14, 14],
+    iconSize: [34, 34],
+    iconAnchor: [17, 17],
   });
 }
 
 const GW_ICON = L.divIcon({
   className: '',
-  html: `<div style="width:22px;height:22px;border-radius:4px;background:#12293d;border:2px solid #f4f1ea;display:flex;align-items:center;justify-content:center;font-size:9px;color:#f4f1ea;font-weight:bold;box-shadow:0 2px 4px rgba(0,0,0,0.5);">GW</div>`,
+  html: `<div style="width:22px;height:22px;border-radius:4px;background:#161b21;border:2px solid #eceff1;display:flex;align-items:center;justify-content:center;font-size:9px;color:#eceff1;font-weight:bold;box-shadow:0 2px 4px rgba(0,0,0,0.5);">GW</div>`,
   iconSize: [22, 22],
   iconAnchor: [11, 11],
 });
@@ -74,20 +75,21 @@ function MapController({
   }
 
   return (
-    <div className="leaflet-top leaflet-left !top-3 !left-3 z-[1000] pointer-events-auto">
+    <div className="leaflet-top leaflet-right !top-3 !right-3 z-[1000] pointer-events-auto">
       <button
         onClick={fitAll}
         title="Pusatkan peta ke seluruh titik Vest dan Gateway"
-        className="rounded-lg border border-white/10 bg-ink-800/90 px-2.5 py-1.5 font-mono text-[10px] uppercase tracking-wider text-white/80 shadow-md backdrop-blur transition hover:bg-ink-700 hover:text-white"
+        className="panel min-h-[44px] px-3 text-xs font-semibold text-white transition hover:bg-ink-700"
       >
-        ⤢ Fit Semua
+        Tampilkan semua
       </button>
     </div>
   );
 }
 
-export default function LiveMap({ vests, gateway, selectedId, onSelect, now }: Props) {
+export default function LiveMap({ vests, gateway, selectedId, onSelect, now, heartbeatTimeoutS }: Props) {
   const navigate = useNavigate();
+  const [base, setBase] = useState<'chart' | 'sat'>('chart');
 
   const positions = vests
     .filter(v => v.state?.lat != null && v.state?.lon != null)
@@ -103,16 +105,30 @@ export default function LiveMap({ vests, gateway, selectedId, onSelect, now }: P
   );
 
   return (
-    <div className="relative h-full w-full">
+    <div className={`relative h-full w-full ${base === 'sat' ? 'map-sat' : ''}`}>
       {/* NOFIX indicator banner */}
       {noFixVests.length > 0 && (
-        <div className="absolute top-3 left-1/2 -translate-x-1/2 z-[1000] pointer-events-auto flex items-center gap-2 rounded-full border border-caution/40 bg-ink-900/90 px-3 py-1 text-xs text-caution shadow-lg backdrop-blur">
+        <div className="panel absolute left-3 top-3 z-[1000] flex max-w-[calc(100%-10rem)] items-center gap-2 px-3 py-2 text-xs font-medium text-caution lg:left-[384px] lg:max-w-[calc(100%-31rem)]">
           <span>⚠</span>
           <span>
             {noFixVests.map(v => v.name).join(', ')}: posisi belum tersedia (NOFIX)
           </span>
         </div>
       )}
+
+      {/* Pilih dasar peta: peta laut (default) atau satelit */}
+      <div role="group" aria-label="Dasar peta" className="panel absolute right-3 top-[3.75rem] z-[1000] flex p-1 text-xs font-semibold">
+        {([['chart', 'Peta'], ['sat', 'Satelit']] as const).map(([k, label]) => (
+          <button
+            key={k}
+            onClick={() => setBase(k)}
+            aria-pressed={base === k}
+            className={`min-h-[36px] rounded-xl px-3 ${base === k ? 'bg-white/15 text-white' : 'text-white/70 hover:text-white'}`}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
 
       <MapContainer
         center={center}
@@ -122,14 +138,18 @@ export default function LiveMap({ vests, gateway, selectedId, onSelect, now }: P
       >
         <MapController vests={vests} gateway={gateway} selectedId={selectedId} />
 
-        <TileLayer
-          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-          attribution='&copy; OpenStreetMap'
-        />
-        <TileLayer
-          url="https://tiles.openseamap.org/seamark/{z}/{x}/{y}.png"
-          attribution='&copy; OpenSeaMap'
-        />
+        {base === 'chart' ? (
+          <>
+            <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" attribution="&copy; OpenStreetMap" />
+            <TileLayer url="https://tiles.openseamap.org/seamark/{z}/{x}/{y}.png" attribution="&copy; OpenSeaMap" opacity={0.55} />
+          </>
+        ) : (
+          <TileLayer
+            url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
+            attribution="Tiles &copy; Esri"
+            maxZoom={19}
+          />
+        )}
 
         {/* Gateway marker */}
         {gateway && gateway.lat != null && gateway.lon != null && (
@@ -137,9 +157,9 @@ export default function LiveMap({ vests, gateway, selectedId, onSelect, now }: P
             <Popup>
               <div className="min-w-[140px]">
                 <div className="font-semibold text-white">{gateway.name}</div>
-                <div className="font-mono text-[10px] text-white/50">{coord(gateway.lat, gateway.lon)}</div>
+                <div className="font-mono text-[11px] text-white/50">{coord(gateway.lat, gateway.lon)}</div>
                 <div className="mt-1 text-xs text-white/60">Status: {gateway.status ?? 'online'}</div>
-                <div className="text-[11px] text-white/40">
+                <div className="text-[11px] text-white/55">
                   SD: {gateway.sd_ok ? 'OK' : 'Error'} · WiFi: {gateway.wifi_ok ? 'OK' : 'Off'}
                 </div>
               </div>
@@ -151,7 +171,7 @@ export default function LiveMap({ vests, gateway, selectedId, onSelect, now }: P
         {vests.map(v => {
           const s = v.state;
           if (!s || s.lat == null || s.lon == null) return null;
-          const stage = s.stage;
+          const stage = effectiveStage(s, heartbeatTimeoutS, now);
           const meta = STAGE_META[stage];
           const icon = makeIcon(meta.color, meta.icon, stage === 'danger');
           return (
@@ -168,9 +188,9 @@ export default function LiveMap({ vests, gateway, selectedId, onSelect, now }: P
                     <span style={{ color: meta.color }} className="text-xs font-bold">{meta.label}</span>
                   </div>
                   {v.assigned_to && <div className="text-xs text-white/60">{v.assigned_to}</div>}
-                  <div className="mt-1 font-mono text-[10px] text-white/50">{coord(s.lat, s.lon)}</div>
+                  <div className="mt-1 font-mono text-[11px] text-white/50">{coord(s.lat, s.lon)}</div>
                   <div className="text-xs text-white/70">{s.status_text}</div>
-                  <div className="text-[10px] text-white/40">terakhir {ago(s.last_seen_at, now)}</div>
+                  <div className="text-[11px] text-white/55">terakhir {ago(s.last_seen_at, now)}</div>
                   <button
                     className="mt-2 text-xs font-semibold text-safe hover:underline"
                     onClick={() => navigate(`/vest/${v.id}`)}
@@ -189,7 +209,7 @@ export default function LiveMap({ vests, gateway, selectedId, onSelect, now }: P
           if (!s || s.lat == null || s.lon == null || !s.pos_fix_at) return null;
           const ageS = Math.floor((now - new Date(s.pos_fix_at).getTime()) / 1000);
           if (ageS < 5) return null;
-          const meta = STAGE_META[s.stage];
+          const meta = STAGE_META[effectiveStage(s, heartbeatTimeoutS, now)];
           const opacity = Math.max(0.05, 0.25 - ageS / 600);
           return (
             <CircleMarker

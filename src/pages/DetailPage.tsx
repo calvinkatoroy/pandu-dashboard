@@ -94,12 +94,12 @@ export default function DetailPage({ simMode }: Props) {
   const bars = rssiBars(s?.rssi ?? null);
 
   return (
-    <div className="flex h-full flex-col overflow-y-auto">
+    <div className="mx-auto flex h-full w-full max-w-3xl flex-col overflow-y-auto">
       {/* Back button */}
       <div className="border-b border-white/5 px-4 py-2">
         <button
           onClick={() => navigate('/')}
-          className="font-mono text-xs text-white/40 hover:text-white/60"
+          className="font-mono text-xs text-white/55 hover:text-white/60"
         >
           ‹ Kembali ke peta
         </button>
@@ -117,18 +117,18 @@ export default function DetailPage({ simMode }: Props) {
           </div>
         </div>
         {vest?.assigned_to && (
-          <div className="mt-1.5 text-sm text-white/40">{vest.assigned_to} · {vest.helmet_label}</div>
+          <div className="mt-1.5 text-sm text-white/55">{vest.assigned_to} · {vest.helmet_label}</div>
         )}
       </div>
 
       {/* Position */}
       <Section title="Posisi">
         <div className="font-mono text-sm tabular text-white/80">{coord(s?.lat ?? null, s?.lon ?? null)}</div>
-        {s?.pos_fix_at && <div className="mt-1 text-xs text-white/40">fix {ago(s.pos_fix_at)}</div>}
+        {s?.pos_fix_at && <div className="mt-1 text-xs text-white/55">fix {ago(s.pos_fix_at)}</div>}
         {s?.lat != null && (
           <button
             onClick={() => navigator.clipboard.writeText(`${s.lat},${s.lon}`)}
-            className="mt-1.5 font-mono text-[10px] text-safe hover:underline"
+            className="mt-1.5 font-mono text-[11px] text-safe hover:underline"
           >
             salin koordinat
           </button>
@@ -148,7 +148,7 @@ export default function DetailPage({ simMode }: Props) {
             {[1,2,3,4,5].map(i => (
               <span key={i} className="w-1 rounded-sm" style={{
                 height: `${i * 3}px`,
-                background: i <= bars ? 'var(--text)' : 'rgba(244,241,234,0.15)',
+                background: i <= bars ? 'var(--text)' : 'rgba(236,239,241,0.15)',
               }} />
             ))}
           </div>
@@ -160,13 +160,13 @@ export default function DetailPage({ simMode }: Props) {
       <Section title="Baterai 24 jam">
         <ResponsiveContainer width="100%" height={140}>
           <LineChart data={chartData}>
-            <XAxis dataKey="t" tick={{ fontSize: 8, fill: 'rgba(244,241,234,0.3)' }} interval={6} />
-            <YAxis domain={[3000, 4300]} tick={{ fontSize: 9, fill: 'rgba(244,241,234,0.3)' }} />
+            <XAxis dataKey="t" tick={{ fontSize: 8, fill: 'rgba(236,239,241,0.3)' }} interval={6} />
+            <YAxis domain={[3000, 4300]} tick={{ fontSize: 9, fill: 'rgba(236,239,241,0.3)' }} />
             <Tooltip
-              contentStyle={{ background: '#12293d', border: '1px solid rgba(244,241,234,0.1)', borderRadius: 8, fontSize: 11 }}
-              labelStyle={{ color: 'rgba(244,241,234,0.5)' }}
+              contentStyle={{ background: '#161b21', border: '1px solid rgba(236,239,241,0.1)', borderRadius: 8, fontSize: 11 }}
+              labelStyle={{ color: 'rgba(236,239,241,0.5)' }}
             />
-            <Line type="monotone" dataKey="bat" stroke="#1fa37a" strokeWidth={1.5} dot={false} />
+            <Line type="monotone" dataKey="bat" stroke="#79b99c" strokeWidth={1.5} dot={false} />
           </LineChart>
         </ResponsiveContainer>
       </Section>
@@ -174,13 +174,13 @@ export default function DetailPage({ simMode }: Props) {
       <Section title="RSSI 24 jam">
         <ResponsiveContainer width="100%" height={140}>
           <LineChart data={chartData}>
-            <XAxis dataKey="t" tick={{ fontSize: 8, fill: 'rgba(244,241,234,0.3)' }} interval={6} />
-            <YAxis domain={[-120, -60]} tick={{ fontSize: 9, fill: 'rgba(244,241,234,0.3)' }} />
+            <XAxis dataKey="t" tick={{ fontSize: 8, fill: 'rgba(236,239,241,0.3)' }} interval={6} />
+            <YAxis domain={[-120, -60]} tick={{ fontSize: 9, fill: 'rgba(236,239,241,0.3)' }} />
             <Tooltip
-              contentStyle={{ background: '#12293d', border: '1px solid rgba(244,241,234,0.1)', borderRadius: 8, fontSize: 11 }}
-              labelStyle={{ color: 'rgba(244,241,234,0.5)' }}
+              contentStyle={{ background: '#161b21', border: '1px solid rgba(236,239,241,0.1)', borderRadius: 8, fontSize: 11 }}
+              labelStyle={{ color: 'rgba(236,239,241,0.5)' }}
             />
-            <Line type="monotone" dataKey="rssi" stroke="#e0a83e" strokeWidth={1.5} dot={false} />
+            <Line type="monotone" dataKey="rssi" stroke="#e6b04b" strokeWidth={1.5} dot={false} />
           </LineChart>
         </ResponsiveContainer>
       </Section>
@@ -191,19 +191,19 @@ export default function DetailPage({ simMode }: Props) {
           <div className="space-y-1">
             {events.map(e => (
               <div key={e.id} className="flex items-center gap-3 border-b border-white/5 py-1.5 font-mono text-xs">
-                <span className="w-16 text-white/40">{wib(e.received_at)}</span>
+                <span className="w-16 text-white/55">{wib(e.received_at)}</span>
                 <span className="w-8 font-bold" style={{
-                  color: ['SOS','FALL','MOB'].includes(e.type) ? 'var(--alert)' : e.type === 'OFF' ? 'rgba(244,241,234,0.4)' : 'var(--text)'
+                  color: ['SOS','FALL','MOB'].includes(e.type) ? 'var(--alert)' : e.type === 'OFF' ? 'rgba(236,239,241,0.4)' : 'var(--text)'
                 }}>{e.type}</span>
-                <span className="text-white/40">bat {e.bat_mv} · helm {e.helm} · {e.rssi}dBm</span>
-                <span className="text-white/30">{coord(e.lat, e.lon)}</span>
+                <span className="text-white/55">bat {e.bat_mv} · helm {e.helm} · {e.rssi}dBm</span>
+                <span className="text-white/55">{coord(e.lat, e.lon)}</span>
               </div>
             ))}
           </div>
         ) : simMode ? (
-          <p className="text-xs text-white/30">Data simulator — linimasa tidak tersimpan di DB</p>
+          <p className="text-xs text-white/55">Data simulator — linimasa tidak tersimpan di DB</p>
         ) : (
-          <p className="text-xs text-white/30">Belum ada event</p>
+          <p className="text-xs text-white/55">Belum ada event</p>
         )}
       </Section>
 
@@ -231,7 +231,7 @@ export default function DetailPage({ simMode }: Props) {
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div className="border-b border-white/5 px-4 py-3">
-      <div className="mb-2 text-[10px] uppercase tracking-wider text-white/30">{title}</div>
+      <div className="mb-2 text-[11px] uppercase tracking-wider text-white/55">{title}</div>
       {children}
     </div>
   );
@@ -240,9 +240,9 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 function Tile({ label, value, sub, children }: { label: string; value: string; sub?: string; children?: React.ReactNode }) {
   return (
     <div className="bg-ink-800 px-3 py-3">
-      <div className="text-[10px] uppercase tracking-wider text-white/30">{label}</div>
+      <div className="text-[11px] uppercase tracking-wider text-white/55">{label}</div>
       <div className="mt-0.5 text-sm font-medium">{value}</div>
-      {sub && <div className="text-[10px] text-white/40">{sub}</div>}
+      {sub && <div className="text-[11px] text-white/55">{sub}</div>}
       {children}
     </div>
   );

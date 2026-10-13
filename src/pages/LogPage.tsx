@@ -76,7 +76,7 @@ export default function LogPage({ simMode }: Props) {
     : events;
 
   return (
-    <div className="flex h-full flex-col">
+    <div className="mx-auto flex h-full w-full max-w-5xl flex-col">
       {/* Filters */}
       <div className="flex flex-wrap gap-2 border-b border-white/5 px-4 py-3">
         <select
@@ -99,7 +99,7 @@ export default function LogPage({ simMode }: Props) {
           placeholder="Cari..."
           value={search}
           onChange={e => setSearch(e.target.value)}
-          className="rounded-lg border border-white/10 bg-ink-800 px-3 py-1.5 text-xs text-white placeholder:text-white/30"
+          className="rounded-lg border border-white/10 bg-ink-800 px-3 py-1.5 text-xs text-white placeholder:text-white/55"
         />
         <button
           onClick={() => downloadCSV('pandu-log.csv', toCSV(filtered.map(e => ({
@@ -116,10 +116,10 @@ export default function LogPage({ simMode }: Props) {
       {/* Table */}
       <div className="flex-1 overflow-auto">
         {loading ? (
-          <div className="p-8 text-center text-xs text-white/30">Memuat...</div>
+          <div className="p-8 text-center text-xs text-white/55">Memuat...</div>
         ) : (
           <table className="w-full text-xs">
-            <thead className="sticky top-0 bg-ink-900 text-white/40">
+            <thead className="sticky top-0 bg-ink-900 text-white/55">
               <tr className="border-b border-white/5">
                 <th className="px-3 py-2 text-left font-medium">Waktu</th>
                 <th className="px-3 py-2 text-left font-medium">Vest</th>
@@ -137,10 +137,10 @@ export default function LogPage({ simMode }: Props) {
                   <td className="px-3 py-2">{e.vest_name ?? `Vest ${e.vest_id}`}</td>
                   <td className="px-3 py-2">
                     <span className="font-mono font-bold" style={{
-                      color: ['SOS','FALL','MOB'].includes(e.type) ? 'var(--alert)' : e.type === 'OFF' ? 'rgba(244,241,234,0.4)' : 'var(--text)'
+                      color: ['SOS','FALL','MOB'].includes(e.type) ? 'var(--alert)' : e.type === 'OFF' ? 'rgba(236,239,241,0.4)' : 'var(--text)'
                     }}>{e.type}</span>
                   </td>
-                  <td className="hidden px-3 py-2 font-mono text-white/40 sm:table-cell">
+                  <td className="hidden px-3 py-2 font-mono text-white/55 sm:table-cell">
                     {e.lat != null ? `${e.lat.toFixed(4)},${e.lon?.toFixed(4)}` : 'NOFIX'}
                   </td>
                   <td className="hidden px-3 py-2 text-right font-mono text-white/60 sm:table-cell">{e.bat_mv}</td>
@@ -156,7 +156,7 @@ export default function LogPage({ simMode }: Props) {
       {/* Pagination */}
       {!simMode && total > PAGE_SIZE && (
         <div className="flex items-center justify-between border-t border-white/5 px-4 py-2">
-          <span className="text-xs text-white/40">
+          <span className="text-xs text-white/55">
             {page * PAGE_SIZE + 1}–{Math.min((page + 1) * PAGE_SIZE, total)} dari {total}
           </span>
           <div className="flex gap-2">

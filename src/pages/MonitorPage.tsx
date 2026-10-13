@@ -3,7 +3,7 @@ import { useVestData } from '../hooks/useVestData';
 import { useAlarmAudio } from '../hooks/useAlarmAudio';
 import { supabase } from '../lib/supabase';
 import { logAudit } from '../lib/audit';
-import { STAGE_META } from '../lib/stage';
+import { STAGE_META, effectiveStage } from '../lib/stage';
 import { ago } from '../lib/format';
 import type { Stage, UserRole } from '../lib/types';
 import VestList from '../components/VestList';
@@ -31,7 +31,12 @@ export default function MonitorPage({ simMode, role, simFleet, setSimFleet }: Pr
     [vests],
   );
   const hasDanger = openIds.length > 0;
-  const { enabled, ringing, enableSound, mute, isMuted } = useAlarmAudio(openIds, settings?.alarm_repeat_s ?? 5);
+  const serverMutedIds = useMemo(
+    () => vests.filter(v => v.incident && !v.incident.resolved_at && v.incident.muted_at).map(v => v.incident!.id),
+    [vests],
+  );
+  const { enabled, ringing, enableSound, mute, isMuted } = useAlarmAudio(openIds, settings?.alarm_repeat_s ?? 5, serverMutedIds);
+  const [sheetOpen, setSheetOpen] = useState(false); // bottom sheet mobile
 
   useEffect(() => {
     const t = setInterval(() => setNow(Date.now()), 1000);
@@ -80,7 +85,7 @@ export default function MonitorPage({ simMode, role, simFleet, setSimFleet }: Pr
   }, [simMode, simUpdateIncident]);
 
   if (loading) {
-    return <div className="flex flex-1 items-center justify-center text-white/30">Memuat...</div>;
+    return <div className="flex flex-1 items-center justify-center text-white/55">Memuat...</div>;
   }
 
   const selected = vests.find(v => v.id === selectedId);
@@ -92,12 +97,7 @@ export default function MonitorPage({ simMode, role, simFleet, setSimFleet }: Pr
 
   // Ringkasan per stage (heartbeat > timeout dihitung warning di klien juga, sbg pengaman)
   const counts: Record<Stage, number> = { safe: 0, warning: 0, danger: 0, inactive: 0 };
-  vests.forEach(v => {
-    let st: Stage = v.state?.stage ?? 'inactive';
-    const last = v.state?.last_seen_at ? (now - new Date(v.state.last_seen_at).getTime()) / 1000 : null;
-    if (st === 'safe' && last !== null && last > hbTimeout) st = 'warning';
-    counts[st]++;
-  });
+  vests.forEach(v => { counts[effectiveStage(v.state, hbTimeout, now)]++; });
   const gwAge = gateway?.last_seen_at ? (now - new Date(gateway.last_seen_at).getTime()) / 1000 : null;
   const gwOnline = gwAge !== null && gwAge < hbTimeout;
 
@@ -108,14 +108,14 @@ export default function MonitorPage({ simMode, role, simFleet, setSimFleet }: Pr
         {(['safe', 'warning', 'danger', 'inactive'] as Stage[]).map(st => (
           <span
             key={st}
-            className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium"
+            className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-semibold"
             style={{ background: STAGE_META[st].bg, color: STAGE_META[st].color }}
           >
             <span aria-hidden>{STAGE_META[st].icon}</span>
             <span className="tabular">{counts[st]}</span> {STAGE_META[st].label}
           </span>
         ))}
-        <span className="ml-auto inline-flex items-center gap-1.5 text-xs text-white/50">
+        <span className="ml-auto inline-flex items-center gap-1.5 text-sm text-white/70">
           <span className={`h-2 w-2 rounded-full ${gwOnline || simMode ? 'bg-safe' : 'bg-caution'}`} />
           {gateway?.id ?? 'GW'} {gwOnline || simMode ? 'online' : 'tidak ada uplink'}
           {gateway?.last_seen_at && <span className="hidden sm:inline">· {ago(gateway.last_seen_at, now)}</span>}
@@ -128,12 +128,12 @@ export default function MonitorPage({ simMode, role, simFleet, setSimFleet }: Pr
       </div>
 
       {!enabled && (
-        <div className="flex items-center justify-between border-b border-white/5 bg-ink-800 px-4 py-2">
-          <span className="text-xs text-white/60">🔔 Aktifkan suara agar alarm Danger dapat berbunyi</span>
+        <div className="flex items-center justify-between border-b border-white/5 bg-ink-800 px-4 py-1.5">
+          <span className="text-sm text-white/70">Suara alarm belum aktif</span>
           <button
             id="enable-sound-btn"
             onClick={enableSound}
-            className="rounded-lg bg-safe px-3 py-1.5 text-xs font-semibold text-white transition hover:brightness-110"
+            className="rounded-lg bg-safe px-4 py-2.5 text-sm font-semibold text-ink-900 transition hover:brightness-110"
           >
             Aktifkan suara
           </button>
@@ -151,47 +151,62 @@ export default function MonitorPage({ simMode, role, simFleet, setSimFleet }: Pr
         now={now}
       />
       {hasDanger && enabled && !ringing && (
-        <div className="border-b border-white/5 bg-ink-800 px-4 py-1 text-center text-[11px] text-white/40">
+        <div className="border-b border-white/5 bg-ink-800 px-4 py-1 text-center text-[11px] text-white/55">
           Suara alarm dimute · insiden tetap terbuka
         </div>
       )}
 
-      <div className="flex flex-1 flex-col overflow-hidden lg:flex-row">
-        {/* Kiri: kartu besar (1 Vest) atau daftar (>1 Vest) */}
-        <div className={`w-full border-b border-white/5 lg:border-b-0 lg:border-r ${single ? 'lg:w-96' : 'lg:w-72'} ${single ? 'max-h-[55vh] lg:max-h-none' : 'max-h-[40vh] lg:max-h-none'} overflow-y-auto`}>
-          {heroVest ? (
-            <VestHero vest={heroVest} now={now} lowBatMv={lowBatMv} heartbeatTimeoutS={hbTimeout} />
-          ) : (
-            <VestList vests={vests} selectedId={selectedId} onSelect={setSelectedId} now={now} lowBatMv={lowBatMv} />
-          )}
-        </div>
+      <div className="relative flex-1 overflow-hidden">
+        {/* Peta full-bleed (acuan: EarthEye) */}
+        <div className="absolute inset-0 flex">
+          <div className="relative flex-1">
+            <LiveMap vests={vests} gateway={gateway} selectedId={selectedId} onSelect={setSelectedId} now={now} heartbeatTimeoutS={hbTimeout} />
+            {(simMode || role === 'admin') && (
+              <div className="absolute right-3 top-28 z-[1000] lg:bottom-8 lg:top-auto">
+                <SimulatorPanel
+                  simMode={simMode}
+                  vestCount={simMode ? simFleet : 8}
+                  onApplyLocal={simApply}
+                  fleet={simFleet}
+                  onFleetChange={setSimFleet}
+                />
+              </div>
+            )}
+          </div>
 
-        {/* Tengah: peta */}
-        <div className="relative flex-1" style={{ minHeight: '300px' }}>
-          <LiveMap vests={vests} gateway={gateway} selectedId={selectedId} onSelect={setSelectedId} now={now} />
-          {(simMode || role === 'admin') && (
-            <div className="absolute right-3 top-3 z-[1000]">
-              <SimulatorPanel
-                simMode={simMode}
-                vestCount={simMode ? simFleet : 8}
-                onApplyLocal={simApply}
-                fleet={simFleet}
-                onFleetChange={setSimFleet}
-              />
+          {/* Detail Vest terpilih (hanya mode banyak Vest, desktop lebar) */}
+          {!single && (
+            <div className="hidden w-80 border-l border-white/10 bg-ink-800 xl:block">
+              {selected ? (
+                <DetailPanel vest={selected} now={now} simMode={simMode} />
+              ) : (
+                <div className="flex h-full items-center justify-center text-sm text-white/55">Pilih Vest untuk detail</div>
+              )}
             </div>
           )}
         </div>
 
-        {/* Kanan: detail (hanya mode banyak Vest, desktop) */}
-        {!single && (
-          <div className="hidden w-80 border-l border-white/5 xl:block">
-            {selected ? (
-              <DetailPanel vest={selected} now={now} simMode={simMode} />
+        {/* Panel Vest melayang: kiri di desktop, bottom sheet di mobile/tablet */}
+        <aside
+          aria-label="Status Vest"
+          className={`panel absolute inset-x-2 bottom-2 z-[1000] flex flex-col overflow-hidden ${sheetOpen ? 'max-h-[68%]' : 'max-h-[220px]'} lg:inset-x-auto lg:left-3 lg:top-3 lg:max-h-[calc(100%-1.5rem)] ${single ? 'lg:bottom-auto lg:w-[360px]' : 'lg:bottom-3 lg:w-[320px]'}`}
+        >
+          <button
+            onClick={() => setSheetOpen(o => !o)}
+            aria-expanded={sheetOpen}
+            className="flex min-h-[44px] w-full flex-none items-center justify-center gap-2 text-xs font-semibold text-white/70 lg:hidden"
+          >
+            <span className="h-1 w-10 rounded-full bg-white/30" aria-hidden />
+            {sheetOpen ? 'Ringkas' : 'Lihat rincian'}
+          </button>
+          <div className="min-h-0 flex-1 overflow-y-auto">
+            {heroVest ? (
+              <VestHero vest={heroVest} now={now} lowBatMv={lowBatMv} heartbeatTimeoutS={hbTimeout} />
             ) : (
-              <div className="flex h-full items-center justify-center text-xs text-white/30">Pilih Vest untuk detail</div>
+              <VestList vests={vests} selectedId={selectedId} onSelect={setSelectedId} now={now} lowBatMv={lowBatMv} heartbeatTimeoutS={hbTimeout} />
             )}
           </div>
-        )}
+        </aside>
       </div>
     </div>
   );

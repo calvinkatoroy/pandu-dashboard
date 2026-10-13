@@ -58,7 +58,7 @@ export default function IncidentPage({ simMode }: Props) {
   }, [simMode, filter]);
 
   return (
-    <div className="flex h-full flex-col">
+    <div className="mx-auto flex h-full w-full max-w-5xl flex-col">
       <div className="flex items-center gap-2 border-b border-white/5 px-4 py-3">
         <div className="flex gap-1.5">
           {(['all', 'open', 'resolved'] as const).map(f => (
@@ -66,7 +66,7 @@ export default function IncidentPage({ simMode }: Props) {
               key={f}
               onClick={() => setFilter(f)}
               className={`rounded-lg px-2.5 py-1 text-xs font-medium ${
-                filter === f ? 'bg-ink-700 text-white' : 'text-white/40'
+                filter === f ? 'bg-ink-700 text-white' : 'text-white/55'
               }`}
             >
               {f === 'all' ? 'Semua' : f === 'open' ? 'Aktif' : 'Selesai'}
@@ -86,9 +86,9 @@ export default function IncidentPage({ simMode }: Props) {
 
       <div className="flex-1 overflow-auto p-4">
         {loading ? (
-          <div className="text-center text-xs text-white/30">Memuat...</div>
+          <div className="text-center text-xs text-white/55">Memuat...</div>
         ) : incidents.length === 0 ? (
-          <div className="text-center text-xs text-white/30">Tidak ada insiden</div>
+          <div className="text-center text-xs text-white/55">Tidak ada insiden</div>
         ) : (
           <div className="space-y-2">
             {incidents.map(inc => {
@@ -103,16 +103,16 @@ export default function IncidentPage({ simMode }: Props) {
                   key={inc.id}
                   className="rounded-xl border p-3"
                   style={{
-                    borderColor: open ? 'rgba(232,84,43,0.3)' : 'rgba(244,241,234,0.08)',
-                    background: open ? 'rgba(232,84,43,0.08)' : 'var(--ink-800)',
+                    borderColor: open ? 'rgba(242,105,74,0.3)' : 'rgba(236,239,241,0.08)',
+                    background: open ? 'rgba(242,105,74,0.08)' : 'var(--ink-800)',
                   }}
                 >
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       <span
-                        className="rounded px-1.5 py-0.5 font-mono text-[10px] font-bold"
+                        className="rounded px-1.5 py-0.5 font-mono text-[11px] font-bold"
                         style={{
-                          background: open ? 'var(--alert)' : 'rgba(244,241,234,0.1)',
+                          background: open ? 'var(--alert)' : 'rgba(236,239,241,0.1)',
                           color: open ? '#fff' : 'var(--text-muted)',
                         }}
                       >

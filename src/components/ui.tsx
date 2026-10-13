@@ -8,7 +8,7 @@ export function PageShell({ title, subtitle, actions, children }: {
       <div className="flex flex-wrap items-center gap-3 border-b border-white/5 px-4 py-3 sm:px-6">
         <div>
           <h1 className="font-display text-2xl leading-none tracking-wider">{title}</h1>
-          {subtitle && <p className="mt-1 text-xs text-white/40">{subtitle}</p>}
+          {subtitle && <p className="mt-1 text-xs text-white/55">{subtitle}</p>}
         </div>
         {actions && <div className="ml-auto flex items-center gap-2">{actions}</div>}
       </div>
@@ -24,7 +24,7 @@ export function Card({ title, children, right }: { title?: string; children: Rea
     <section className="rounded-2xl border border-white/5 bg-ink-800/80 p-4 shadow-lg shadow-black/10">
       {(title || right) && (
         <div className="mb-3 flex items-center justify-between">
-          {title && <h2 className="text-[11px] font-semibold uppercase tracking-wider text-white/40">{title}</h2>}
+          {title && <h2 className="text-[11px] font-semibold uppercase tracking-wider text-white/55">{title}</h2>}
           {right}
         </div>
       )}
@@ -43,16 +43,16 @@ export function Notice({ tone = 'info', children }: { tone?: 'info' | 'warn'; ch
 export function Stat({ label, value, sub, color }: { label: string; value: ReactNode; sub?: ReactNode; color?: string }) {
   return (
     <div className="rounded-xl bg-ink-900/60 px-3 py-2.5">
-      <div className="text-[10px] uppercase tracking-wider text-white/30">{label}</div>
+      <div className="text-[11px] uppercase tracking-wider text-white/55">{label}</div>
       <div className="mt-0.5 font-mono text-lg tabular" style={{ color }}>{value}</div>
-      {sub && <div className="text-[11px] text-white/40">{sub}</div>}
+      {sub && <div className="text-[11px] text-white/55">{sub}</div>}
     </div>
   );
 }
 
 export const inputCls =
-  'w-full rounded-lg border border-white/10 bg-ink-900 px-3 py-2 text-sm text-white placeholder:text-white/30 focus:border-safe/50 focus:outline-none disabled:opacity-50';
+  'w-full rounded-lg border border-white/10 bg-ink-900 px-3 py-2 text-sm text-white placeholder:text-white/55 focus:border-safe/50 focus:outline-none disabled:opacity-50';
 export const btnPrimary =
-  'rounded-lg bg-safe px-3 py-2 text-xs font-semibold text-white transition hover:brightness-110 disabled:opacity-50';
+  'rounded-lg bg-safe px-4 py-2.5 text-sm font-semibold text-ink-900 transition hover:brightness-110 disabled:opacity-50';
 export const btnGhost =
   'rounded-lg border border-white/10 bg-ink-800 px-3 py-2 text-xs text-white/70 transition hover:bg-ink-700 disabled:opacity-50';

@@ -19,9 +19,9 @@ export function wibDate(iso: string | null): string {
 export function ago(iso: string | null, now = Date.now()): string {
   if (!iso) return '—';
   const s = Math.max(0, Math.floor((now - new Date(iso).getTime()) / 1000));
-  if (s < 60) return `${s}d lalu`;
-  if (s < 3600) return `${Math.floor(s / 60)}m lalu`;
-  return `${Math.floor(s / 3600)}j lalu`;
+  if (s < 60) return `${s} dtk lalu`;
+  if (s < 3600) return `${Math.floor(s / 60)} mnt lalu`;
+  return `${Math.floor(s / 3600)} jam lalu`;
 }
 
 export function coord(lat: number | null, lon: number | null): string {

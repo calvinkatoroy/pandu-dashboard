@@ -6,12 +6,13 @@ import { useCallback, useEffect, useRef, useState } from 'react';
  * - Mute per insiden: insiden baru akan berbunyi lagi walau insiden lama sudah di-mute.
  * - Peramban butuh interaksi pengguna dulu, jadi ada `enableSound()`.
  */
-export function useAlarmAudio(openIncidentIds: number[], repeatS = 5) {
+export function useAlarmAudio(openIncidentIds: number[], repeatS = 5, serverMutedIds: number[] = []) {
   const [enabled, setEnabled] = useState(false);
   const [mutedIds, setMutedIds] = useState<Set<number>>(new Set());
   const ctxRef = useRef<AudioContext | null>(null);
 
-  const ringing = enabled && openIncidentIds.some(id => !mutedIds.has(id));
+  // Mute juga berlaku lintas operator/refresh: baca muted_at dari server (incidents.muted_at).
+  const ringing = enabled && openIncidentIds.some(id => !mutedIds.has(id) && !serverMutedIds.includes(id));
 
   const beep = useCallback(() => {
     const ctx = ctxRef.current;
@@ -60,7 +61,7 @@ export function useAlarmAudio(openIncidentIds: number[], repeatS = 5) {
 
   const mute = (id: number) => setMutedIds(prev => new Set(prev).add(id));
   const muteAll = () => setMutedIds(new Set(openIncidentIds));
-  const isMuted = (id: number) => mutedIds.has(id);
+  const isMuted = (id: number) => mutedIds.has(id) || serverMutedIds.includes(id);
 
   return { enabled, ringing, enableSound, mute, muteAll, isMuted, testBeep: beep };
 }

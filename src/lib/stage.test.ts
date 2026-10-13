@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   computeStage,
+  effectiveStage,
   batPercent,
   batColor,
   helmLabel,
@@ -106,10 +107,10 @@ describe('Telemetry helpers', () => {
   });
 
   it('determines battery color according to threshold', () => {
-    expect(batColor(3400, 3500)).toBe('#e8542b'); // alert red
-    expect(batColor(3600, 3500)).toBe('#e0a83e'); // caution yellow
-    expect(batColor(3800, 3500)).toBe('#1fa37a'); // safe green
-    expect(batColor(null, 3500)).toBe('#6b7c8d'); // unknown
+    expect(batColor(3400, 3500)).toBe('#f2694a'); // alert red
+    expect(batColor(3600, 3500)).toBe('#e6b04b'); // caution yellow
+    expect(batColor(3800, 3500)).toBe('#79b99c'); // safe green
+    expect(batColor(null, 3500)).toBe('#8794a1'); // unknown
   });
 
   it('maps helmet state labels', () => {
@@ -130,5 +131,16 @@ describe('Telemetry helpers', () => {
 
     expect(rssiLabel(-80)).toBe('-80 dBm');
     expect(rssiLabel(null)).toBe('no link');
+  });
+});
+
+describe('effectiveStage', () => {
+  const now = Date.now();
+  const seen = (secAgo: number) => new Date(now - secAgo * 1000).toISOString();
+  it('menurunkan Aman ke Warning bila heartbeat basi, stage lain tidak berubah', () => {
+    expect(effectiveStage({ stage: 'safe', last_seen_at: seen(10) }, 120, now)).toBe('safe');
+    expect(effectiveStage({ stage: 'safe', last_seen_at: seen(200) }, 120, now)).toBe('warning');
+    expect(effectiveStage({ stage: 'danger', last_seen_at: seen(200) }, 120, now)).toBe('danger');
+    expect(effectiveStage(null, 120, now)).toBe('inactive');
   });
 });

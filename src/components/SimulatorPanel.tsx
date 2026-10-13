@@ -67,12 +67,12 @@ export default function SimulatorPanel({ simMode, vestCount, onApplyLocal, fleet
         className="flex w-full items-center justify-between px-3 py-2 text-xs font-medium"
       >
         <span className="font-mono uppercase tracking-wider text-safe">Simulator</span>
-        <span className="text-white/40">{open ? '▾' : '▸'}</span>
+        <span className="text-white/55">{open ? '▾' : '▸'}</span>
       </button>
 
       {open && (
         <div className="w-56 border-t border-white/5 p-3">
-          <p className="mb-2 text-[10px] text-white/40">
+          <p className="mb-2 text-[11px] text-white/55">
             {simMode ? 'Mode Sim: data lokal di browser.' : 'Mode Live: kirim ke Edge Function ingest.'}
           </p>
           {simMode && onFleetChange && (
@@ -90,7 +90,7 @@ export default function SimulatorPanel({ simMode, vestCount, onApplyLocal, fleet
           )}
           {/* Vest selector */}
           <div className="mb-2">
-            <label className="text-[10px] uppercase tracking-wider text-white/30">Vest</label>
+            <label className="text-[11px] uppercase tracking-wider text-white/55">Vest</label>
             <select
               value={vestId}
               onChange={e => setVestId(Number(e.target.value))}
@@ -117,7 +117,7 @@ export default function SimulatorPanel({ simMode, vestCount, onApplyLocal, fleet
           </div>
 
           {lastResult && (
-            <div className="mt-2 font-mono text-[10px] text-white/50">{lastResult}</div>
+            <div className="mt-2 font-mono text-[11px] text-white/50">{lastResult}</div>
           )}
         </div>
       )}

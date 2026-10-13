@@ -19,7 +19,7 @@ export default function App() {
   if (loading) {
     return (
       <div className="flex h-screen items-center justify-center">
-        <div className="font-display text-2xl text-[#f4f1ea]">PAN<span className="text-[#1fa37a]">DU</span></div>
+        <div className="font-display text-2xl text-[#eceff1]">PANDU</div>
       </div>
     );
   }

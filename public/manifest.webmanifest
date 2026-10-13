@@ -4,8 +4,8 @@
   "description": "Dashboard pemantauan keselamatan kerja pilot pandu maritim dermaga secara real-time",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#0a1c2b",
-  "theme_color": "#0a1c2b",
+  "background_color": "#0f1317",
+  "theme_color": "#0f1317",
   "orientation": "any",
   "icons": [
     {

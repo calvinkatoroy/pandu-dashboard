@@ -1,5 +1,5 @@
 import type { VestWithData } from '../hooks/useVestData';
-import { STAGE_META } from '../lib/stage';
+import { STAGE_META, effectiveStage } from '../lib/stage';
 import VestCard from './VestCard';
 import { useState } from 'react';
 
@@ -9,22 +9,24 @@ interface Props {
   onSelect: (id: number) => void;
   now: number;
   lowBatMv: number;
+  heartbeatTimeoutS: number;
 }
 
-export default function VestList({ vests, selectedId, onSelect, now, lowBatMv }: Props) {
+export default function VestList({ vests, selectedId, onSelect, now, lowBatMv, heartbeatTimeoutS }: Props) {
   const [filter, setFilter] = useState<'all' | 'danger' | 'warning' | 'safe' | 'inactive'>('all');
 
   const counts = { safe: 0, warning: 0, danger: 0, inactive: 0 };
-  vests.forEach(v => { counts[v.state?.stage ?? 'inactive']++; });
+  const st = (v: (typeof vests)[number]) => effectiveStage(v.state, heartbeatTimeoutS, now);
+  vests.forEach(v => { counts[st(v)]++; });
 
   const filtered = filter === 'all'
     ? vests
-    : vests.filter(v => (v.state?.stage ?? 'inactive') === filter);
+    : vests.filter(v => st(v) === filter);
 
   // Sort: danger first, then warning, then safe, then inactive
   const order = { danger: 0, warning: 1, safe: 2, inactive: 3 };
   const sorted = [...filtered].sort((a, b) =>
-    order[a.state?.stage ?? 'inactive'] - order[b.state?.stage ?? 'inactive']
+    order[st(a)] - order[st(b)]
   );
 
   return (
@@ -47,7 +49,7 @@ export default function VestList({ vests, selectedId, onSelect, now, lowBatMv }:
               <div className="font-mono text-base font-bold tabular" style={{ color: meta.color }}>
                 {counts[stage]}
               </div>
-              <div className="text-[8px] uppercase tracking-wider text-white/40">{meta.label}</div>
+              <div className="text-[11px] uppercase tracking-wider text-white/55">{meta.label}</div>
             </button>
           );
         })}
@@ -63,10 +65,11 @@ export default function VestList({ vests, selectedId, onSelect, now, lowBatMv }:
             onClick={() => onSelect(v.id)}
             now={now}
             lowBatMv={lowBatMv}
+            heartbeatTimeoutS={heartbeatTimeoutS}
           />
         ))}
         {sorted.length === 0 && (
-          <p className="py-8 text-center text-xs text-white/30">Tidak ada Vest pada stage ini</p>
+          <p className="py-8 text-center text-xs text-white/55">Tidak ada Vest pada stage ini</p>
         )}
       </div>
     </div>

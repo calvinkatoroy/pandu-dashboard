@@ -4,11 +4,22 @@ export const STAGE_META: Record<
   Stage,
   { label: string; color: string; bg: string; icon: string; border: string }
 > = {
-  safe:     { label: 'Aman',     color: '#1fa37a', bg: 'rgba(31,163,122,0.16)',  icon: '●', border: 'rgba(31,163,122,0.35)' },
-  warning:  { label: 'Warning',  color: '#e0a83e', bg: 'rgba(224,168,62,0.16)',  icon: '▲', border: 'rgba(224,168,62,0.35)' },
-  danger:   { label: 'Bahaya',   color: '#e8542b', bg: 'rgba(232,84,43,0.18)',   icon: '⚠', border: 'rgba(232,84,43,0.45)' },
-  inactive: { label: 'Nonaktif', color: '#6b7c8d', bg: 'rgba(107,124,141,0.18)', icon: '○', border: 'rgba(107,124,141,0.35)' },
+  safe:     { label: 'Aman',     color: '#79b99c', bg: 'rgba(121,185,156,0.16)',  icon: '●', border: 'rgba(121,185,156,0.35)' },
+  warning:  { label: 'Warning',  color: '#e6b04b', bg: 'rgba(230,176,75,0.16)',  icon: '▲', border: 'rgba(230,176,75,0.35)' },
+  danger:   { label: 'Bahaya',   color: '#f2694a', bg: 'rgba(242,105,74,0.18)',   icon: '⚠', border: 'rgba(242,105,74,0.45)' },
+  inactive: { label: 'Nonaktif', color: '#8794a1', bg: 'rgba(135,148,161,0.18)', icon: '○', border: 'rgba(135,148,161,0.35)' },
 };
+
+/** Stage yang ditampilkan: Aman dengan heartbeat basi dianggap Warning sampai cron server menyusul. */
+export function effectiveStage(
+  s: { stage: Stage; last_seen_at: string | null } | null | undefined,
+  heartbeatTimeoutS: number,
+  now: number,
+): Stage {
+  const st = s?.stage ?? 'inactive';
+  if (st !== 'safe' || !s?.last_seen_at) return st;
+  return (now - Date.parse(s.last_seen_at)) / 1000 > heartbeatTimeoutS ? 'warning' : st;
+}
 
 export function helmLabel(h: HelmetState | null): string {
   if (h === null) return '—';
@@ -22,10 +33,10 @@ export function batPercent(mv: number | null): number {
 }
 
 export function batColor(mv: number | null, lowMv: number): string {
-  if (mv === null) return '#6b7c8d';
-  if (mv < lowMv) return '#e8542b';
-  if (mv < lowMv + 200) return '#e0a83e';
-  return '#1fa37a';
+  if (mv === null) return '#8794a1';
+  if (mv < lowMv) return '#f2694a';
+  if (mv < lowMv + 200) return '#e6b04b';
+  return '#79b99c';
 }
 
 export { computeStage } from '../../supabase/functions/_shared/stage.ts';

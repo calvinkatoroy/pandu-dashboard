@@ -15,9 +15,9 @@ describe('Format helpers', () => {
     const twoMinAgo = new Date(now - 120_000).toISOString();
     const twoHoursAgo = new Date(now - 7_200_000).toISOString();
 
-    expect(ago(tenSecAgo, now)).toBe('10d lalu');
-    expect(ago(twoMinAgo, now)).toBe('2m lalu');
-    expect(ago(twoHoursAgo, now)).toBe('2j lalu');
+    expect(ago(tenSecAgo, now)).toBe('10 dtk lalu');
+    expect(ago(twoMinAgo, now)).toBe('2 mnt lalu');
+    expect(ago(twoHoursAgo, now)).toBe('2 jam lalu');
     expect(ago(null, now)).toBe('—');
   });
 

@@ -1,5 +1,5 @@
 import type { VestWithData } from '../hooks/useVestData';
-import { STAGE_META, batPercent, batColor, helmLabel, rssiBars, rssiLabel } from '../lib/stage';
+import { STAGE_META, effectiveStage, batPercent, batColor, helmLabel, rssiBars, rssiLabel } from '../lib/stage';
 import { ago } from '../lib/format';
 import { useNavigate } from 'react-router-dom';
 
@@ -9,12 +9,13 @@ interface Props {
   onClick: () => void;
   now: number;
   lowBatMv: number;
+  heartbeatTimeoutS: number;
 }
 
-export default function VestCard({ vest, selected, onClick, now, lowBatMv }: Props) {
+export default function VestCard({ vest, selected, onClick, now, lowBatMv, heartbeatTimeoutS }: Props) {
   const navigate = useNavigate();
   const s = vest.state;
-  const stage = s?.stage ?? 'inactive';
+  const stage = effectiveStage(s, heartbeatTimeoutS, now);
   const meta = STAGE_META[stage];
   const bat = batPercent(s?.bat_mv ?? null);
   const bars = rssiBars(s?.rssi ?? null);
@@ -22,6 +23,10 @@ export default function VestCard({ vest, selected, onClick, now, lowBatMv }: Pro
   return (
     <div
       onClick={onClick}
+      role="button"
+      tabIndex={0}
+      aria-pressed={selected}
+      onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onClick(); } }}
       className={`group relative w-full cursor-pointer text-left rounded-xl border p-3 transition-all ${
         selected ? 'ring-2 ring-safe/40 shadow-lg shadow-safe/10' : 'hover:border-white/20'
       }`}
@@ -41,14 +46,14 @@ export default function VestCard({ vest, selected, onClick, now, lowBatMv }: Pro
           </span>
           <span className="text-sm font-semibold">{vest.name}</span>
         </div>
-        <span className="font-mono text-[10px] uppercase tracking-wider" style={{ color: meta.color }}>
+        <span className="font-mono text-[11px] uppercase tracking-wider" style={{ color: meta.color }}>
           {meta.label}
         </span>
       </div>
 
       {/* Assigned person */}
       {vest.assigned_to && (
-        <p className="mt-1.5 truncate text-xs text-white/40">{vest.assigned_to}</p>
+        <p className="mt-1.5 truncate text-xs text-white/55">{vest.assigned_to}</p>
       )}
 
       {/* Status text */}
@@ -67,11 +72,11 @@ export default function VestCard({ vest, selected, onClick, now, lowBatMv }: Pro
                 style={{ width: `${bat}%`, background: batColor(s.bat_mv, lowBatMv) }}
               />
             </div>
-            <span className="font-mono text-[10px] text-white/50 tabular">{bat}%</span>
+            <span className="font-mono text-[11px] text-white/50 tabular">{bat}%</span>
           </div>
 
           {/* Helmet */}
-          <span className="text-[10px] text-white/40">{helmLabel(s.helm)}</span>
+          <span className="text-[11px] text-white/55">{helmLabel(s.helm)}</span>
 
           {/* Signal */}
           <div className="ml-auto flex items-center gap-1">
@@ -82,25 +87,25 @@ export default function VestCard({ vest, selected, onClick, now, lowBatMv }: Pro
                   className="w-0.5 rounded-sm"
                   style={{
                     height: `${i * 3}px`,
-                    background: i <= bars ? 'var(--text)' : 'rgba(244,241,234,0.15)',
+                    background: i <= bars ? 'var(--text)' : 'rgba(236,239,241,0.15)',
                   }}
                 />
               ))}
             </div>
-            <span className="font-mono text-[9px] text-white/40">{rssiLabel(s.rssi)}</span>
+            <span className="font-mono text-[11px] text-white/55">{rssiLabel(s.rssi)}</span>
           </div>
         </div>
       )}
 
       {/* Footer */}
-      <div className="mt-2 flex items-center justify-between font-mono text-[9px] text-white/40">
+      <div className="mt-2 flex items-center justify-between font-mono text-[11px] text-white/55">
         <span>{s?.last_seen_at ? `${vest.incident ? '⚠ ' : ''}terakhir ${ago(s.last_seen_at, now)}` : '—'}</span>
         <button
           onClick={(e) => {
             e.stopPropagation();
             navigate(`/vest/${vest.id}`);
           }}
-          className="text-safe/80 hover:text-safe hover:underline font-sans text-[10px]"
+          className="min-h-[32px] px-1 font-sans text-xs text-safe hover:underline"
         >
           Detail ›
         </button>
