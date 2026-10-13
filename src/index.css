@@ -1,0 +1,61 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --ink-900: #0a1c2b;
+  --ink-800: #12293d;
+  --ink-700: #1a3650;
+  --line: rgba(244, 241, 234, 0.10);
+  --text: #f4f1ea;
+  --text-muted: rgba(244, 241, 234, 0.58);
+  --chart-paper: #e7dfc6;
+  --safe: #1fa37a;
+  --caution: #e0a83e;
+  --alert: #e8542b;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+html, body, #root { height: 100%; margin: 0; }
+
+body {
+  background: var(--ink-900);
+  color: var(--text);
+  font-family: 'IBM Plex Sans', system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+.font-display { font-family: 'Bebas Neue', sans-serif; letter-spacing: 2px; }
+.font-mono { font-family: 'IBM Plex Mono', monospace; }
+.tabular { font-variant-numeric: tabular-nums; }
+
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-thumb { background: rgba(244,241,234,0.15); border-radius: 3px; }
+::-webkit-scrollbar-track { background: transparent; }
+
+/* Leaflet dark theme */
+.leaflet-container {
+  background: #0e2233;
+  font-family: 'IBM Plex Sans', sans-serif;
+}
+.leaflet-tile-pane { filter: invert(1) hue-rotate(180deg) brightness(0.95) contrast(0.9); }
+.leaflet-control-attribution { background: rgba(10,28,43,0.8) !important; color: rgba(244,241,234,0.5) !important; font-size: 9px !important; }
+.leaflet-control-attribution a { color: rgba(244,241,234,0.7) !important; }
+.leaflet-popup-content-wrapper {
+  background: var(--ink-800); color: var(--text);
+  border: 1px solid var(--line); border-radius: 10px;
+}
+.leaflet-popup-tip { background: var(--ink-800); }
+.leaflet-popup-content { margin: 10px 14px; font-size: 12px; }
+
+.stage-pulse { animation: stage-pulse 2s ease-out infinite; }
+@keyframes stage-pulse {
+  0% { box-shadow: 0 0 0 0 currentColor; opacity: 0.6; }
+  100% { box-shadow: 0 0 0 8px transparent; opacity: 0; }
+}
+.danger-pulse { animation: danger-pulse 1s ease-in-out infinite; }
+@keyframes danger-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.55; }
+}
