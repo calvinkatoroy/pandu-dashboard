@@ -21,6 +21,17 @@ export function effectiveStage(
   return (now - Date.parse(s.last_seen_at)) / 1000 > heartbeatTimeoutS ? 'warning' : st;
 }
 
+/** Stage satu event untuk tabel Log (tanpa konteks waktu: helm basi dan heartbeat hilang tidak bisa dinilai per event). */
+export function eventStage(
+  e: { type: string; helm: number | null; bat_mv: number | null },
+  lowBatMv = 3500,
+): Stage {
+  if (e.type === 'OFF') return 'inactive';
+  if (e.type !== 'HB') return 'danger';
+  if ((e.helm !== null && e.helm !== 1) || (e.bat_mv !== null && e.bat_mv < lowBatMv)) return 'warning';
+  return 'safe';
+}
+
 export function helmLabel(h: HelmetState | null): string {
   if (h === null) return '—';
   return h === 1 ? 'Dipakai' : h === 0 ? 'Jauh' : 'Tidak terdengar';

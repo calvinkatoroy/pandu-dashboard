@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
 import type { VestEvent } from '../lib/types';
 import { wibDate, toCSV, downloadCSV } from '../lib/format';
+import { STAGE_META, eventStage } from '../lib/stage';
 
 interface Props {
   simMode: boolean;
@@ -103,7 +104,7 @@ export default function LogPage({ simMode }: Props) {
         />
         <button
           onClick={() => downloadCSV('pandu-log.csv', toCSV(filtered.map(e => ({
-            time: e.received_at, vest: e.vest_id, type: e.type,
+            time: e.received_at, vest: e.vest_id, type: e.type, stage: STAGE_META[eventStage(e)].label,
             lat: e.lat, lon: e.lon, bat_mv: e.bat_mv, helm: e.helm,
             rssi: e.rssi, snr: e.snr, seq: e.seq,
           }))))}
@@ -124,6 +125,7 @@ export default function LogPage({ simMode }: Props) {
                 <th className="px-3 py-2 text-left font-medium">Waktu</th>
                 <th className="px-3 py-2 text-left font-medium">Vest</th>
                 <th className="px-3 py-2 text-left font-medium">Jenis</th>
+                <th className="px-3 py-2 text-left font-medium">Stage</th>
                 <th className="hidden px-3 py-2 text-left font-medium sm:table-cell">Posisi</th>
                 <th className="hidden px-3 py-2 text-right font-medium sm:table-cell">Baterai</th>
                 <th className="hidden px-3 py-2 text-right font-medium md:table-cell">Helm</th>
@@ -139,6 +141,9 @@ export default function LogPage({ simMode }: Props) {
                     <span className="font-mono font-bold" style={{
                       color: ['SOS','FALL','MOB'].includes(e.type) ? 'var(--alert)' : e.type === 'OFF' ? 'rgba(236,239,241,0.4)' : 'var(--text)'
                     }}>{e.type}</span>
+                  </td>
+                  <td className="px-3 py-2 whitespace-nowrap">
+                    {(() => { const m = STAGE_META[eventStage(e)]; return <span style={{ color: m.color }}><span aria-hidden>{m.icon}</span> {m.label}</span>; })()}
                   </td>
                   <td className="hidden px-3 py-2 font-mono text-white/55 sm:table-cell">
                     {e.lat != null ? `${e.lat.toFixed(4)},${e.lon?.toFixed(4)}` : 'NOFIX'}

@@ -12,6 +12,13 @@ export default function IncidentPage({ simMode }: Props) {
   const [incidents, setIncidents] = useState<(Incident & { vest_name?: string })[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<'open' | 'resolved' | 'all'>('all');
+  const [names, setNames] = useState<Record<string, string>>({ 'uid-1': 'Operator jaga', 'sim-operator': 'Operator (simulasi)' });
+
+  useEffect(() => {
+    if (simMode) return;
+    supabase.from('profiles').select('user_id, name').then(({ data }) =>
+      setNames(Object.fromEntries((data ?? []).map(p => [p.user_id as string, p.name as string]))));
+  }, [simMode]);
 
   useEffect(() => {
     if (simMode) {
@@ -113,7 +120,7 @@ export default function IncidentPage({ simMode }: Props) {
                         className="rounded px-1.5 py-0.5 font-mono text-[11px] font-bold"
                         style={{
                           background: open ? 'var(--alert)' : 'rgba(236,239,241,0.1)',
-                          color: open ? '#fff' : 'var(--text-muted)',
+                          color: open ? 'var(--ink-900)' : 'var(--text-muted)',
                         }}
                       >
                         {inc.kind}
@@ -125,10 +132,11 @@ export default function IncidentPage({ simMode }: Props) {
                     </span>
                   </div>
 
-                  <div className="mt-2 flex gap-4 font-mono text-[11px] text-white/50">
+                  <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-white/65">
                     <span>buka: {wibDate(inc.opened_at)}</span>
                     <span>durasi: {durMin}m</span>
-                    {inc.acknowledged_at && <span>ack: {ago(inc.acknowledged_at)}</span>}
+                    {inc.acknowledged_at && <span>ack: {names[inc.acknowledged_by ?? ''] ?? 'operator'} · {ago(inc.acknowledged_at)}</span>}
+                    {inc.resolved_at && inc.resolution === 'dismissed' && <span>selesai oleh: {names[inc.resolved_by ?? ''] ?? 'operator'}</span>}
                   </div>
 
                   {inc.notes && <p className="mt-1.5 text-xs text-white/60">"{inc.notes}"</p>}

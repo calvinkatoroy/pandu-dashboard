@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   computeStage,
   effectiveStage,
+  eventStage,
   batPercent,
   batColor,
   helmLabel,
@@ -142,5 +143,15 @@ describe('effectiveStage', () => {
     expect(effectiveStage({ stage: 'safe', last_seen_at: seen(200) }, 120, now)).toBe('warning');
     expect(effectiveStage({ stage: 'danger', last_seen_at: seen(200) }, 120, now)).toBe('danger');
     expect(effectiveStage(null, 120, now)).toBe('inactive');
+  });
+});
+
+describe('eventStage', () => {
+  it('memetakan event ke stage untuk Log', () => {
+    expect(eventStage({ type: 'SOS', helm: 1, bat_mv: 3900 })).toBe('danger');
+    expect(eventStage({ type: 'OFF', helm: 1, bat_mv: 3900 })).toBe('inactive');
+    expect(eventStage({ type: 'HB', helm: 2, bat_mv: 3900 })).toBe('warning');
+    expect(eventStage({ type: 'HB', helm: 1, bat_mv: 3400 })).toBe('warning');
+    expect(eventStage({ type: 'HB', helm: 1, bat_mv: 3900 })).toBe('safe');
   });
 });
