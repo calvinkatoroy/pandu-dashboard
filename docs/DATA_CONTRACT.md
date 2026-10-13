@@ -2,7 +2,7 @@
 
 Satu sumber kebenaran untuk format data antara Vest, Gateway, dan dashboard. Firmware (repo `pandu-capstone`), simulator, dan backend dashboard harus mengikuti dokumen ini. Setiap perubahan format dicatat di bagian "Riwayat versi".
 
-Status per 12 Okt 2026: **v1 = format yang dikeluarkan firmware sekarang. v2 = usulan, belum diimplementasikan di firmware.** Scope prototipe: 1 Helmet, 1 Vest, 1 Gateway (kontrak tetap mendukung sampai 8 Vest).
+Status per 13 Okt 2026: **v2 sudah diimplementasikan di firmware Vest dan Gateway (terkompilasi, belum diuji di hardware). v1 tetap diterima Gateway (vest_id=1, seq dibuat Gateway).** Scope prototipe: 1 Helmet, 1 Vest, 1 Gateway (kontrak tetap mendukung sampai 8 Vest).
 
 ---
 
@@ -29,7 +29,7 @@ PANDU,V1,SOS,NOFIX,NOFIX,3890,2,0
 
 Keterbatasan v1: tidak ada ID Vest, tidak ada nomor urut (`seq`), tidak bisa membuang duplikat SOS, tidak ada tipe `OFF`.
 
-### 1.2 v2 (usulan, wajib sebelum uji end-to-end)
+### 1.2 v2 (diimplementasikan di firmware 13 Okt 2026)
 ```
 PANDU,V2,<vest_id>,<seq>,<tipe>,<lat>,<lon>,<mV>,<helm>,<usia_s>
 PANDU,V2,1,412,HB,-6.1021,106.8823,3890,1,4
@@ -99,7 +99,7 @@ Body:
 Aturan:
 - `lat`/`lon` dikirim sebagai angka, atau `null` bila `NOFIX` (Gateway mengubah string `"NOFIX"` menjadi `null`).
 - `received_at` diisi Gateway (UTC, NTP), bukan waktu server. Simpan UTC; tampilkan WIB (UTC+7).
-- **Idempoten:** unik pada (`gateway_id`, `vest_id`, `seq`); paket ulang diabaikan (dihitung `duplicates`).
+- **Idempoten:** unik pada (`gateway_id`, `vest_id`, `seq`, `received_at`); retry event yang sama diabaikan (dihitung `duplicates`). `received_at` ikut kunci karena `seq` hanya 16-bit dan berulang (heartbeat 30 s: sekitar tiap 22 jam; cold boot Vest mulai dari nilai acak). Paket ulang radio (SOS 3x dengan `seq` sama) dibuang Gateway sebelum diunggah (jendela 60 s), sehingga menjadi satu event.
 - Mendukung **batch** (isi antrean microSD saat internet kembali), urut dari terlama.
 - Batas: ≤ 100 event per request.
 
@@ -137,7 +137,8 @@ Prioritas Danger > Warning > Aman. Danger padam otomatis bila 2 heartbeat bertur
 | FALL lalu MOB | FALL (`seq`=n), lalu MOB (`seq`=n+1) dalam 60 s | Insiden naik dari FALL ke MOB, Stage 3 |
 | Tanpa posisi | SOS dengan `lat:null` | Stage 3, peta tanpa penanda + tulisan "posisi belum tersedia" |
 | Padam otomatis | Danger lalu 2 HB bersih | Insiden selesai (auto), tetap tersimpan |
-| Duplikat | Event sama dikirim dua kali | `duplicates: 1` |
+| Duplikat | Event sama (waktu sama) dikirim dua kali | `duplicates: 1` |
+| `seq` berulang | `seq` yang sama di waktu berbeda (wrap 16-bit atau reboot) | Diterima, dua event |
 | Batch lama | 20 event dari SD, urut terlama | Semua diterima, urutan terjaga |
 | Dimatikan | `OFF` | Nonaktif, bukan warning |
 
@@ -148,4 +149,5 @@ Prioritas Danger > Warning > Aman. Danger padam otomatis bila 2 heartbeat bertur
 | Tanggal | Versi | Perubahan |
 |---|---|---|
 | 12 Okt 2026 | Draf | Dokumen dibuat dari firmware v1 dan usulan v2 |
+| 13 Okt 2026 | Draf | v2 diimplementasikan (Vest: vest_id, seq RTC, OFF, jitter 30 s ±5; Gateway: parse v1/v2, buang duplikat radio 60 s, NTP, antrean microSD, unggah batch). Kunci idempotensi diubah ke (gateway_id, vest_id, seq, received_at) (migrasi 0005). |
 | 13 Okt 2026 | Draf | Ingest: validasi per event, event lama tidak menimpa state, aturan helm 30 s di server (migrasi 0004), 429, gateway tak dikenal 422. Logika stage di `supabase/functions/_shared/stage.ts` (dipakai server dan client). |

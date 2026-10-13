@@ -112,19 +112,21 @@ Deno.serve(async (req) => {
   valid.sort((x, y) => Date.parse(x.ev.received_at) - Date.parse(y.ev.received_at));
   if (valid.length === 0) return json({ accepted: 0, duplicates: 0, rejected });
 
-  // Satu insert untuk semua event; baris duplikat (gateway_id, vest_id, seq) diabaikan oleh DB.
+  // Satu insert untuk semua event; baris duplikat (gateway_id, vest_id, seq, received_at) diabaikan oleh DB.
   const rows = valid.map(({ ev }) => ({
     gateway_id: body.gateway_id, vest_id: ev.vest_id, seq: ev.seq, type: ev.type,
     lat: ev.lat, lon: ev.lon, pos_age_s: ev.pos_age_s ?? null, bat_mv: ev.bat_mv,
     helm: ev.helm, rssi: ev.rssi, snr: ev.snr ?? null, received_at: ev.received_at,
   }));
   const { data: inserted, error: insErr } = await supabase.from('events')
-    .upsert(rows, { onConflict: 'gateway_id,vest_id,seq', ignoreDuplicates: true })
-    .select('id, vest_id, seq');
+    .upsert(rows, { onConflict: 'gateway_id,vest_id,seq,received_at', ignoreDuplicates: true })
+    .select('id, vest_id, seq, received_at');
   if (insErr) return json({ error: insErr.message }, 500);
 
-  const idBySeq = new Map((inserted ?? []).map(r => [`${r.vest_id}:${r.seq}`, r.id as number]));
-  const fresh = valid.filter(({ ev }) => idBySeq.has(`${ev.vest_id}:${ev.seq}`));
+  // Kunci pakai epoch ms: DB mengembalikan received_at dalam format berbeda dari input.
+  const evKey = (v: number, q: number, t: string) => `${v}:${q}:${Date.parse(t)}`;
+  const idBySeq = new Map((inserted ?? []).map(r => [evKey(r.vest_id, r.seq, r.received_at), r.id as number]));
+  const fresh = valid.filter(({ ev }) => idBySeq.has(evKey(ev.vest_id, ev.seq, ev.received_at)));
   const accepted = fresh.length;
   const duplicates = valid.length - accepted;
   if (accepted === 0) return json({ accepted, duplicates, rejected });
@@ -178,7 +180,7 @@ Deno.serve(async (req) => {
       if (ev.helm === 1) helmOff.set(ev.vest_id, null);
       else if (!helmOff.get(ev.vest_id)) helmOff.set(ev.vest_id, ev.received_at);
     }
-    lastByVest.set(ev.vest_id, { ev, id: idBySeq.get(`${ev.vest_id}:${ev.seq}`)! });
+    lastByVest.set(ev.vest_id, { ev, id: idBySeq.get(evKey(ev.vest_id, ev.seq, ev.received_at))! });
   }
 
   for (const [vestId, { ev, id }] of lastByVest) {
