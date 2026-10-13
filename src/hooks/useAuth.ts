@@ -52,14 +52,10 @@ export function useAuth() {
   }
 
   async function signUp(email: string, password: string, name: string) {
-    const { data, error } = await supabase.auth.signUp({
+    const { error } = await supabase.auth.signUp({
       email, password,
       options: { data: { name } },
     });
-    if (!error && data.user) {
-      await supabase.from('profiles')
-        .upsert({ user_id: data.user.id, name, role: 'operator' });
-    }
     return error;
   }
 

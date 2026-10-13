@@ -179,6 +179,15 @@ export function useVestData(simMode: boolean, simFleet: 1 | 8 = 1) {
         })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'incidents' },
         (payload) => {
+          if (payload.eventType === 'DELETE') {
+            const gone = payload.old as Partial<Incident>;
+            setIncidents(prev => {
+              const next = { ...prev };
+              for (const k of Object.keys(next)) if (next[+k]?.id === gone.id) next[+k] = null;
+              return next;
+            });
+            return;
+          }
           const ni = payload.new as Incident;
           if (ni.resolved_at) {
             setIncidents(prev => {

@@ -13,7 +13,7 @@ import SystemHealthPage from './pages/SystemHealthPage';
 
 export default function App() {
   const { user, loading, signOut } = useAuth();
-  const [simMode, setSimMode] = useState(true);
+  const [simMode, setSimMode] = useState(false);
   const [simFleet, setSimFleet] = useState<1 | 8>(1);
 
   if (loading) {

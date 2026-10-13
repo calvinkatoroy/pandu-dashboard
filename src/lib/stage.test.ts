@@ -51,10 +51,17 @@ describe('Stage Logic (DATA_CONTRACT §4 & PLAN §3)', () => {
     expect(stage).toBe('warning');
   });
 
+  it('helmet off is only a warning after helmet_threshold_s', () => {
+    const base = { type: 'HB', helm: 2, bat_mv: 3800, lastSeenSecondsAgo: 20, hasOpenDanger: false, settings: DEFAULT_SETTINGS };
+    expect(computeStage({ ...base, helmOffSeconds: 10 })).toBe('safe');
+    expect(computeStage({ ...base, helmOffSeconds: 30 })).toBe('warning');
+  });
+
   it('marks warning when helmet is off (helm = 2)', () => {
     const stage = computeStage({
       type: 'HB',
       helm: 2,
+      helmOffSeconds: 31,
       bat_mv: 3800,
       lastSeenSecondsAgo: 20,
       hasOpenDanger: false,
